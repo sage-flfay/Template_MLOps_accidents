@@ -90,4 +90,8 @@ target/
 
 # Mypy cache
 .mypy_cache/
-*.joblib
+*.joblib.venv/
+/models/
+/.dvc/cache/
+/.dvc/tmp/
+/.dvc/config.local
