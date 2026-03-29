@@ -216,7 +216,8 @@ CHOICES = {
     },
     # Équipement de sécurité - utilisation (1er item)
     # Réf. BAAC 2017 – "ÉQUIPEMENT DE SÉCURITÉ - UTILISATION"
-    # (Dans le BAAC, plusieurs items existent ; ici on expose le plus courant pour un unique champ 'secu1')
+    # (Dans le BAAC, plusieurs items existent ;
+    # ici on expose le plus courant pour un unique champ 'secu1')
     "secu1": {
         0: "Aucun équipement",
         1: "Ceinture",
@@ -229,7 +230,8 @@ CHOICES = {
         9: "Non renseigné",
     },
     # Catégorie de véhicule (sous-ensemble utile pour l’UI)
-    # Réf. BAAC – “CATEGORIE DE VEHICULE” (format BAAC 2007/2017 ; liste complète très longue)
+    # Réf. BAAC – “CATEGORIE DE VEHICULE”
+    # (format BAAC 2007/2017 ; liste complète très longue)
     # -> N’hésite pas à l’étendre si besoin pour ton jeu.
     "catv": {
         1: "Bicyclette",
@@ -331,9 +333,9 @@ async def predict(request: Request):
         for f in FEATURES:
             try:
                 row[f] = float(data[f])
-            except:
+            except Exception as e:
                 return JSONResponse(
-                    {"error": f"feature '{f}' must be numeric"}, status_code=400
+                    {"error": f"feature '{f}' must be numeric: {e}"}, status_code=400
                 )
 
         df = pd.DataFrame([row])
@@ -400,8 +402,6 @@ for feat, sample, label in zip(FEATURES, SAMPLE, FEATURE_LABELS):
             f"</div>\n"
         )
 
-    # HTML += f'<div class="field"><label>{label}</label><input id="{feat}" type="number" step="any" value="{sample}"/></div>\n'
-
 HTML += """
 </div>
 
@@ -428,12 +428,11 @@ function collectPayload() {
       const v = sel.value;
       payload[feat] = (v === "" ? null : Number(v));
       continue;
-    }    
-    const inp = document.getElementById(feat);
+    } const inp = document.getElementById(feat);
     if (inp) {
       const v = inp.value;
       payload[feat] = (v === "" ? null : Number(v));
-    } else {      
+    } else {
       payload[feat] = null;
     }
   }
@@ -442,17 +441,13 @@ function collectPayload() {
 
 
 async function predict() {
-    let payload = collectPayload();    
-
+    let payload = collectPayload();
     const r = await fetch("/predict", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
     });
-
-    const txt = await r.text();
-
-   
+    const txt = await r.text();   
     const data = JSON.parse(txt); 
     const pred = Number(data?.prediction);
     if (pred === 1 ) {
@@ -463,7 +458,6 @@ async function predict() {
     document.getElementById("result").innerText = header + txt;
 }
 </script>
-
 </body>
 </html>
 """
