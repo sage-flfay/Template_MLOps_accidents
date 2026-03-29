@@ -447,8 +447,8 @@ async function predict() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
     });
-    const txt = await r.text();   
-    const data = JSON.parse(txt); 
+    const txt = await r.text();
+    const data = JSON.parse(txt);
     const pred = Number(data?.prediction);
     if (pred === 1 ) {
         header ="Accident prioritaire";
