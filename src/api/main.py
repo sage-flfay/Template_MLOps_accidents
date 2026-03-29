@@ -5,15 +5,41 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, HTMLResponse
 
-MODEL_DIR = Path(os.path.dirname(__file__)).parent.parent / 'models'
-MODEL_PATH = MODEL_DIR / 'model.joblib'
+MODEL_DIR = Path(os.path.dirname(__file__)).parent.parent / "models"
+MODEL_PATH = MODEL_DIR / "model.joblib"
 
 
 FEATURES = [
-    "place","catu","sexe","secu1","year_acc","victim_age","catv","obsm","motor",
-    "catr","circ","surf","situ","vma","jour","mois","lum","dep","com","agg_",
-    "int","atm","col","lat","long","hour","nb_victim","nb_vehicules"
+    "place",
+    "catu",
+    "sexe",
+    "secu1",
+    "year_acc",
+    "victim_age",
+    "catv",
+    "obsm",
+    "motor",
+    "catr",
+    "circ",
+    "surf",
+    "situ",
+    "vma",
+    "jour",
+    "mois",
+    "lum",
+    "dep",
+    "com",
+    "agg_",
+    "int",
+    "atm",
+    "col",
+    "lat",
+    "long",
+    "hour",
+    "nb_victim",
+    "nb_vehicules",
 ]
+
 
 FEATURE_LABELS = [
     "Lieu de l’accident",
@@ -43,7 +69,7 @@ FEATURE_LABELS = [
     "Longitude",
     "Heure",
     "Nombre de victimes",
-    "Nombre de véhicules"
+    "Nombre de véhicules",
 ]
 
 CHOICES = {
@@ -53,7 +79,6 @@ CHOICES = {
         1: "Hors agglomération",
         2: "En agglomération",
     },
-
     # Lumière
     # Réf. BAAC 2017 – "LUMIÈRE"
     "lum": {
@@ -63,7 +88,6 @@ CHOICES = {
         4: "Nuit avec éclairage public non allumé",
         5: "Nuit avec éclairage public allumé",
     },
-
     # Intersection
     # Réf. BAAC 2017 – "INTERSECTION"
     "int": {
@@ -77,7 +101,6 @@ CHOICES = {
         8: "Passage à niveau",
         9: "Autre",
     },
-
     # Conditions atmosphériques
     # Réf. BAAC 2017 – "CONDITION ATMOSPHÉRIQUE"
     "atm": {
@@ -91,7 +114,6 @@ CHOICES = {
         8: "Temps couvert",
         9: "Autre",
     },
-
     # Type de collision
     # Réf. BAAC (schéma usuel open data) – ordre/labels usuels
     "col": {
@@ -103,7 +125,6 @@ CHOICES = {
         6: "Autre collision",
         7: "Sans collision",
     },
-
     # Catégorie administrative de la route
     # Réf. BAAC 2017 – "CATÉGORIE ADMINISTRATIVE"
     "catr": {
@@ -115,7 +136,6 @@ CHOICES = {
         6: "Parc de stationnement ouvert à la circulation publique",
         9: "Autre",
     },
-
     # Régime de circulation
     # Réf. BAAC 2017 – "RÉGIME DE CIRCULATION"
     "circ": {
@@ -124,7 +144,6 @@ CHOICES = {
         3: "À chaussées séparées",
         4: "Avec voies d’affectation variable",
     },
-
     # État de surface
     # Réf. BAAC 2017 – "ÉTAT DE SURFACE"
     "surf": {
@@ -137,7 +156,6 @@ CHOICES = {
         7: "Verglacée",
         8: "Corps gras - Huile",
     },
-
     # Situation de l’accident
     # Réf. BAAC 2017 – "SITUATION DE L’ACCIDENT"
     "situ": {
@@ -151,7 +169,6 @@ CHOICES = {
         8: "Sur parking / aire",
         9: "Autre",
     },
-
     # Obstacle mobile heurté
     # Réf. BAAC 2017 – "OBSTACLE MOBILE HEURTÉ"
     "obsm": {
@@ -163,7 +180,6 @@ CHOICES = {
         6: "Animal sauvage",
         9: "Autre",
     },
-
     # Catégorie d’usager
     # Réf. BAAC 2017 – "CATÉGORIE D’USAGER"
     "catu": {
@@ -171,14 +187,12 @@ CHOICES = {
         2: "Passager",
         3: "Piéton",
     },
-
     # Sexe
     # Réf. BAAC 2017 – "SEXE"
     "sexe": {
         1: "Masculin",
         2: "Féminin",
     },
-
     # Place dans le véhicule (occupants)
     # Réf. BAAC 2017 – "PLACE DANS LE VÉHICULE"
     "place": {
@@ -190,7 +204,6 @@ CHOICES = {
         6: "Autre place (minibus/TC/etc.)",
         9: "Sans objet / Non applicable",
     },
-
     # Type de motorisation
     # Réf. BAAC 2017 – "TYPE DE MOTORISATION"
     "motor": {
@@ -201,7 +214,6 @@ CHOICES = {
         5: "GPL / GNV / autre gaz",
         9: "Non renseigné",
     },
-
     # Équipement de sécurité - utilisation (1er item)
     # Réf. BAAC 2017 – "ÉQUIPEMENT DE SÉCURITÉ - UTILISATION"
     # (Dans le BAAC, plusieurs items existent ; ici on expose le plus courant pour un unique champ 'secu1')
@@ -216,15 +228,14 @@ CHOICES = {
         7: "Autre",
         9: "Non renseigné",
     },
-
     # Catégorie de véhicule (sous-ensemble utile pour l’UI)
     # Réf. BAAC – “CATEGORIE DE VEHICULE” (format BAAC 2007/2017 ; liste complète très longue)
     # -> N’hésite pas à l’étendre si besoin pour ton jeu.
     "catv": {
-        1:  "Bicyclette",
-        2:  "Cyclomoteur < 50 cm³",
-        3:  "Voiturette / quadricycle léger",
-        7:  "VL seul",
+        1: "Bicyclette",
+        2: "Cyclomoteur < 50 cm³",
+        3: "Voiturette / quadricycle léger",
+        7: "VL seul",
         10: "VU seul (≤ 3,5 t)",
         13: "PL (> 3,5 t) + remorque",
         14: "PL seul (> 7,5 t)",
@@ -240,15 +251,44 @@ CHOICES = {
         99: "Inconnu / Non renseigné",
     },
 }
-    
 
 
-SAMPLE = [1,1,1,8.0,2021,46.0,2.0,2.0,1.0,7,2.0,1.0,1.0,90.0,18,11,1,45,45072,1,1,0.0,1.0,47.964066,1.927586,17,2,2]
+SAMPLE = [
+    1,
+    1,
+    1,
+    8.0,
+    2021,
+    46.0,
+    2.0,
+    2.0,
+    1.0,
+    7,
+    2.0,
+    1.0,
+    1.0,
+    90.0,
+    18,
+    11,
+    1,
+    45,
+    45072,
+    1,
+    1,
+    0.0,
+    1.0,
+    47.964066,
+    1.927586,
+    17,
+    2,
+    2,
+]
 
 app = FastAPI(title="Accident ML API")
 
 MODEL = None
 MODEL_INFO = {}
+
 
 @app.on_event("startup")
 def load_model():
@@ -259,12 +299,14 @@ def load_model():
     except Exception as e:
         MODEL_INFO = {"loaded": False, "error": str(e)}
 
+
 # ------------------------------------------------------------
 # HEALTHCHECK
 # ------------------------------------------------------------
 @app.get("/health")
 def healthz():
     return MODEL_INFO
+
 
 # ------------------------------------------------------------
 # PREDICT (JSON brut)
@@ -280,7 +322,9 @@ async def predict(request: Request):
         # Validation des features
         missing = [f for f in FEATURES if f not in data]
         if missing:
-            return JSONResponse({"error": f"missing features: {missing}"}, status_code=400)
+            return JSONResponse(
+                {"error": f"missing features: {missing}"}, status_code=400
+            )
 
         # Conversion en float
         row = {}
@@ -307,6 +351,7 @@ async def predict(request: Request):
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 
+
 # ------------------------------------------------------------
 # PAGE HTML
 # ------------------------------------------------------------
@@ -330,32 +375,32 @@ HTML = """
 <div class="row">
 """
 
-for feat,sample,label in zip(FEATURES, SAMPLE, FEATURE_LABELS):
+for feat, sample, label in zip(FEATURES, SAMPLE, FEATURE_LABELS):
     if feat in CHOICES and isinstance(CHOICES[feat], dict) and len(CHOICES[feat]) > 0:
         HTML += f'<div class="field"><label for="{feat}_select">{label}</label>\n'
-        HTML += f'  <select id="{feat}_select" data-feature="{feat}">\n'    
-        for code, lib in sorted(CHOICES[feat].items(), key=lambda x: (x[0] is None, x[0])):
-            code_str = "" if code is None else str(code)            
+        HTML += f'  <select id="{feat}_select" data-feature="{feat}">\n'
+        for code, lib in sorted(
+            CHOICES[feat].items(), key=lambda x: (x[0] is None, x[0])
+        ):
+            code_str = "" if code is None else str(code)
             selected = ""
             if float(sample) == float(code):
-                selected = " selected"                            
+                selected = " selected"
             HTML += f'    <option value="{code_str}"{selected}>{lib}</option>\n'
-        HTML += '  </select>\n'
-        HTML += '</div>\n'
+        HTML += "  </select>\n"
+        HTML += "</div>\n"
 
     else:
-        #champ numérique classique        
+        # champ numérique classique
         value_attr = f' value="{sample}"' if sample is not None else ""
         HTML += (
             f'<div class="field">'
             f'<label for="{feat}">{label}</label>'
             f'<input id="{feat}" type="number" step="any"{value_attr}/>'
-            f'</div>\n'
+            f"</div>\n"
         )
 
-
-
-    #HTML += f'<div class="field"><label>{label}</label><input id="{feat}" type="number" step="any" value="{sample}"/></div>\n'
+    # HTML += f'<div class="field"><label>{label}</label><input id="{feat}" type="number" step="any" value="{sample}"/></div>\n'
 
 HTML += """
 </div>
@@ -372,7 +417,8 @@ const FIELDS = ["""
 for feat in FEATURES:
     HTML += f'  "{feat}",'
 
-HTML += """];
+HTML += (
+    """];
 
 function collectPayload() {
   const payload = {};
@@ -420,7 +466,10 @@ async function predict() {
 
 </body>
 </html>
-""" % FEATURES
+"""
+    % FEATURES
+)
+
 
 @app.get("/", response_class=HTMLResponse)
 def home():
