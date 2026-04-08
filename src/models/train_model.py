@@ -1,52 +1,68 @@
-# train_model.py (version ed01) dans src/models/
-
 import sys
+import argparse
 from pathlib import Path
-
-# import sklearn
 import pandas as pd
 from sklearn import ensemble
 import joblib
 import numpy as np
+import mlflow
 
-print(joblib.__version__)
+# Import des fonctions utilitaires pour MLflow
+from src.models.mlflow_utils import set_tracking_uri, set_experiment, start_run, log_params, log_model
 
-# On récupère les chemins (Crash ici si le dvc.yaml est incomplet)
-try:
-    input_filepath = Path(sys.argv[1])
-    output_model_path_filename = Path(sys.argv[2])
-except IndexError:
-    print("❌ Erreur : dvc.yaml n'a pas fourni assez d'arguments.")
-    sys.exit(1)
+# 1. Gestion propre des arguments avec argparse
+parser = argparse.ArgumentParser()
+parser.add_argument("--train_path", type=str, default="data/preprocessed", help="Dossier contenant les CSV")
+parser.add_argument("--model_output", type=str, default="models/model.joblib", help="Fichier de sortie du modèle")
+args = parser.parse_args()
 
-# On vérifie si le chemin d'entrée EXISTE vraiment
+input_filepath = Path(args.train_path)
+output_model_path_filename = Path(args.model_output)
+
+# 2. Vérification du chemin d'entrée
 if not input_filepath.exists():
-    print(
-        "❌ Erreur de syntaxe dans dvc.yaml : "
-        f"Le chemin '{input_filepath}' n'existe pas !"
-    )
+    print(f"❌ Erreur : Le chemin '{input_filepath}' n'existe pas !")
     print(f"📍 Emplacement actuel : {Path.cwd()}")
     sys.exit(1)
 
-# Sécurité : On s'assure que le dossier PARENT existe (ici "models/")
-# .parent récupère "models" à partir de "models/model.joblib"
+# Sécurité : Création du dossier parent pour le modèle
 output_model_path_filename.parent.mkdir(parents=True, exist_ok=True)
 
-# Si on arrive ici, tout est OK
 print(f"✅ Source path checked : {input_filepath}")
 
-X_train = pd.read_csv(f"{input_filepath}/X_train.csv")
-X_test = pd.read_csv(f"{input_filepath}/X_test.csv")
-y_train = pd.read_csv(f"{input_filepath}/y_train.csv")
-y_test = pd.read_csv(f"{input_filepath}/y_test.csv")
+# 3. Chargement des données
+# Note : On utilise le dossier fourni pour charger les 4 fichiers
+X_train = pd.read_csv(input_filepath / "X_train.csv")
+X_test = pd.read_csv(input_filepath / "X_test.csv")
+y_train = pd.read_csv(input_filepath / "y_train.csv")
+y_test = pd.read_csv(input_filepath / "y_test.csv")
+
 y_train = np.ravel(y_train)
 y_test = np.ravel(y_test)
 
+# 4. Configuration MLflow
 rf_classifier = ensemble.RandomForestClassifier(n_jobs=-1)
 
-# --Train the model
-rf_classifier.fit(X_train, y_train)
+# Note : Si vous utilisez DagsHub, l'URI sera différent de localhost
+# Mais on laisse l'orchestrateur gérer l'expérience
+set_tracking_uri("http://localhost:5000") 
+#set_experiment("01_Gravity_Accident")
 
-# --Save the trained model to a file
+# Récupération du run actif (créé par la commande terminale :"mlflow run .") si elle existe, 
+# sinon création d'un nouveau run avec cette instruction : start_run()
+active_run = mlflow.active_run()   
+run_id = active_run.info.run_id if active_run else None
+
+# Si run_id existe, on reprend le run de l'orchestrateur.
+# On active nested=True pour éviter tout conflit de hiérarchie
+with start_run(run_name="RandomForest_v1", run_id=run_id, nested=True):
+    log_params({"n_jobs": -1, "model_type": "RandomForest"})
+    
+    rf_classifier.fit(X_train, y_train)
+    
+    # Log du modèle dans MLflow
+    log_model(rf_classifier)
+
+# 5. Sauvegarde physique du modèle (pour DVC)
 joblib.dump(rf_classifier, output_model_path_filename)
 print(f"✅ Model trained and saved successfully here : {output_model_path_filename}")

@@ -1,7 +1,7 @@
 schema: '2.0'
 stages:
   import:
-    cmd: uv run python src/data/import_raw_data.py data/raw
+    cmd: uv run --active python src/data/import_raw_data.py data/raw
     outs:
     - path: data/raw
       hash: md5
@@ -9,7 +9,8 @@ stages:
       size: 31082914
       nfiles: 4
   process:
-    cmd: uv run python src/data/make_dataset.py data/raw data/preprocessed
+    cmd: uv run --active python src/data/make_dataset.py data/raw 
+      data/preprocessed
     deps:
     - path: data/raw
       hash: md5
@@ -38,7 +39,7 @@ stages:
       md5: 4201106fa338c961187a0653ac139046
       size: 76581
   train:
-    cmd: uv run python src/models/train_model.py data/preprocessed 
+    cmd: uv run --active python -m src.models.train_model data/preprocessed 
       models/model.joblib
     deps:
     - path: data/preprocessed/X_train.csv
@@ -51,15 +52,15 @@ stages:
       size: 76581
     - path: src/models/train_model.py
       hash: md5
-      md5: ac7ff498d5d4d7a8a17f6d3e48220267
-      size: 1619
+      md5: a57c85fa00257016130906b9ac1d5e43
+      size: 2110
     outs:
     - path: models/model.joblib
       hash: md5
-      md5: 5f5806ef560407a14aff91e6c9fb4ee6
-      size: 107034201
+      md5: 53783782af1e72604250e923d1c717c0
+      size: 107258361
   evaluate:
-    cmd: uv run python src/models/evaluate_model.py models/model.joblib 
+    cmd: uv run --active python -m src.models.evaluate_model models/model.joblib
       data/preprocessed metrics.json
     deps:
     - path: data/preprocessed/X_test.csv
@@ -72,14 +73,14 @@ stages:
       size: 32825
     - path: models/model.joblib
       hash: md5
-      md5: 5f5806ef560407a14aff91e6c9fb4ee6
-      size: 107034201
+      md5: 53783782af1e72604250e923d1c717c0
+      size: 107258361
     - path: src/models/evaluate_model.py
       hash: md5
-      md5: d53c5547b0848ea4e30d4f8c610a2844
-      size: 3852
+      md5: a0e293d1944f72c379685eb3183beb0e
+      size: 5061
     outs:
     - path: metrics.json
       hash: md5
-      md5: 965afb7a1ba89db8e05faafc57270683
-      size: 405
+      md5: a77f0bbc20adb11fad516e8779a9227b
+      size: 402

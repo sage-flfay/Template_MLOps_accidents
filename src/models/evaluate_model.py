@@ -7,6 +7,8 @@ import sys
 from pathlib import Path
 from sklearn.metrics import accuracy_score, classification_report, f1_score
 
+# Import MLflow utilities for logging metrics
+from src.models.mlflow_utils import log_metrics, set_tracking_uri, set_experiment, start_run
 
 def evaluate(model_file_path, data_path, metrics_file_path):
     # 1. Chargement du modèle
@@ -43,9 +45,35 @@ def evaluate(model_file_path, data_path, metrics_file_path):
         "classe_1_grave": {
             "precision": class_1.get("precision", 0),
             "recall": class_1.get("recall", 0),
-            "f1-score": class_1.get("f1-score", 0),
+            "f1-score": class_1.get("f1-score", 0), 
         },
     }
+
+    #=====================================================================
+    # Obtention d'un dictionnaire de métriques "aplati" pour MLflow
+    #=====================================================================
+    # Utilisation de MLflow pour le suivi des métriques
+    set_tracking_uri("http://localhost:5000") 
+
+    set_experiment("01_Gravity_Accident")
+
+    #--- MLflow logging ---
+    flat_metrics = {
+        "accuracy": metrics["global"]["accuracy"] ,
+        "f1_macro_avg": metrics["global"]["f1_macro_avg"],
+    
+        "precision_classe_0": metrics["classe_0_benin"]["precision"],
+        "recall_classe_0": metrics["classe_0_benin"]["recall"],
+        "f1_classe_0": metrics["classe_0_benin"]["f1-score"],
+
+        "precision_classe_1": metrics["classe_1_grave"]["precision"],
+        "recall_classe_1": metrics["classe_1_grave"]["recall"],
+        "f1_classe_1": metrics["classe_1_grave"]["f1-score"],
+    }
+
+    # Enregistrement des métriques dans MLflow
+    with start_run(run_name="Evaluation_v1") as run:
+        log_metrics(flat_metrics)
 
     # 5. Sauvegarde des métriques en JSON
     with open(metrics_file_path, "w") as f:
@@ -73,6 +101,7 @@ def evaluate(model_file_path, data_path, metrics_file_path):
 
 
 if __name__ == "__main__":
+
     # Récupération des arguments de la ligne de commande
     # Crash ici si le dvc.yaml est incomplet
     try:

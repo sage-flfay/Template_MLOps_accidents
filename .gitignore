@@ -95,3 +95,9 @@ target/
 /.dvc/cache/
 /.dvc/tmp/
 /.dvc/config.local
+
+mlruns/
+mlflow.db
+outputs/
+__pycache__/
+.env/
