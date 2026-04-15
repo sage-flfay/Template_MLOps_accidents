@@ -1,9 +1,28 @@
 import os
+import time
 import joblib
 import pandas as pd
 from pathlib import Path
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse, HTMLResponse
+from prometheus_client import Counter, Histogram, Gauge, generate_latest
+
+app = FastAPI(title="Accident ML API")
+
+PREDICTION_COUNT = Counter(
+    "accident_predictions_total",
+    "Nombre total de prédictions effectuées"
+)
+
+PREDICTION_LATENCY = Histogram(
+    "accident_prediction_latency_seconds",
+    "Temps de réponse des prédictions en secondes"
+)
+
+MODEL_VERSION = Gauge(
+    "accident_model_version",
+    "Version du modèle en production"
+)
 
 MODEL_DIR = Path(os.path.dirname(__file__)).parent.parent / "models"
 MODEL_PATH = "models/model.joblib"
@@ -286,7 +305,6 @@ SAMPLE = [
     2,
 ]
 
-app = FastAPI(title="Accident ML API")
 
 MODEL = None
 MODEL_INFO = {}
@@ -298,6 +316,7 @@ def load_model():
     try:
         MODEL = joblib.load(MODEL_PATH)
         MODEL_INFO = {"loaded": True, "model": str(type(MODEL)), "path": MODEL_PATH}
+        MODEL_VERSION.set(1)
     except Exception as e:
         MODEL_INFO = {"loaded": False, "error": str(e)}
 
@@ -309,26 +328,28 @@ def load_model():
 def healthz():
     return MODEL_INFO
 
-
+@app.get("/metrics")
+def metrics():
+    return Response(generate_latest(), media_type="text/plain")
 # ------------------------------------------------------------
 # PREDICT (JSON brut)
 # ------------------------------------------------------------
 @app.post("/predict")
 async def predict(request: Request):
+    start_time = time.time()
+
     if not MODEL_INFO.get("loaded"):
         return JSONResponse({"error": "model not loaded"}, status_code=500)
 
     try:
         data = await request.json()
 
-        # Validation des features
         missing = [f for f in FEATURES if f not in data]
         if missing:
             return JSONResponse(
                 {"error": f"missing features: {missing}"}, status_code=400
             )
 
-        # Conversion en float
         row = {}
         for f in FEATURES:
             try:
@@ -348,11 +369,13 @@ async def predict(request: Request):
             proba = MODEL.predict_proba(df)[0].tolist()
             result["probabilities"] = proba
 
+        PREDICTION_COUNT.inc()
+        PREDICTION_LATENCY.observe(time.time() - start_time)
+
         return JSONResponse(result)
 
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
-
 
 # ------------------------------------------------------------
 # PAGE HTML

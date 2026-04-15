@@ -1,4 +1,4 @@
-Project Name
+Project Template_MLOps_accidents
 ==============================
 
 This project is a starting Pack for MLOps projects based on the subject "road accident". It's not perfect so feel free to make some modifications on it.
