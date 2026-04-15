@@ -6,7 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, HTMLResponse
 
 MODEL_DIR = Path(os.path.dirname(__file__)).parent.parent / "models"
-MODEL_PATH = MODEL_DIR / "model.joblib"
+MODEL_PATH = "models/model.joblib"
 
 
 FEATURES = [
