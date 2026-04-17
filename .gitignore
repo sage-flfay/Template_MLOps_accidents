@@ -105,3 +105,4 @@ deployments/nginx/certs/
 # Fichier généré par Makefile
 mlflow-logrotate.conf
 .AccidentsSetupDVC_AlreadyDone
+metrics.json
