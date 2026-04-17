@@ -1,0 +1,75 @@
+#################################################################################################################
+# .dockerignore : Stratégie d'exclusion pour Image MLOps Agile
+# Objectif : ne garder que l'essentiel pour que l'image soit parfaitement fonctionnelle
+# Localisation : Dockerfile et le fichier d'exclusion .dockerignore
+#                sont donc dans le même répertoire (la racine du projet).
+# Initialisation = commande "docker compose build" :
+#   - Lecture du docker-compose.yml pour identifier le contexte (context: .) et le fichier de build.
+#   - Filtrage immédiat à lecture de .dockerignore pour exclure tout ce qui y est listé du répertoire réel.
+#   - Création temporaire d'une arborescence virtuelle (le contexte) contenant uniquement les fichiers autorisés.
+#   - Exécution du Dockerfile en utilisant uniquement cette référence virtuelle.
+#     Si un fichier a été ignoré, il est "invisible" pour les commandes COPY ou ADD.
+################################################################################################################
+
+# ------------------- EXCLUSIONS TECHNIQUES -------------------
+# --- Environnement local (le conteneur crée le sien)
+.venv/
+.uv/
+# --- Les résidus Python
+__pycache__/
+*.pyc
+# --- Historique Git (lourd et inutile)
+.git/
+.gitignore
+
+# --- Ne pas les copier par principe de propreté logicielle
+.dockerignore
+Dockerfile
+
+
+# --------- EXCLUSIONS DE DONNÉES (Gérées par Volumes) ---------
+# --- Ne pas générer inutilement une image à chaque nouvelles données 
+data/
+mlruns/
+
+# --- DVC PIPELINES (On garde les .dvc mais on exclut le reste) ---
+dvc.yaml
+dvc.lock
+.dvcignore
+# --- Cache très lourd et inutile
+.dvc/cache/
+# --- Config locale confidentielle (mots de passe/accès S3)
+.dvc/config.local
+# On garde les fichiers .dvc (tout petits - pointeurs) car ils
+# fournissent la version de volume utilisé (versioning par contrat).
+
+# --- LOGS ET TEMPORAIRES (Inutiles dans l'image) ---
+*.log
+logs/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# --- ANALYSE ET DOC (Inutiles en prod) ---
+notebooks/
+references/
+reports/
+LICENSE
+README.md
+
+# --- CONFIGURATION ET TOOLS DE BUILD ---
+.github/
+test/
+Makefile
+setup.py
+setup.cfg
+requirements.txt
+.python-version
+
+# --- MLFLOW / CONFIG SYSTÈME ---
+mlflow-logrotate.conf
+metrics.json
+
+# --- FICHIERS CACHÉS DE SETUP ---
+.AccidentsSetupDVC_AlreadyDone
+.auth_check
+.gitattributes

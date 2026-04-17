@@ -1,0 +1,220 @@
+# Fichier docker-compose.yml à la racine
+
+# Warning indiquant: version is obsolete
+# version: '3.8'
+# WARNING: NE PAS MONTER UN VOLUME EN FAISANT .:/app (ou alors monter impérativement le volume - /app/.venv POUR LE FORCER A ETRE VIDE)
+# POURQUOI: .:app va créer un pont entre le .venv de la machine et /app/.venv .
+# Donc l'env de la machine est utilisé au profit de l'env de l'image. On touche à l'intégrité de l'image
+# D'où un risque d'incompatibilité car on n'utilise plus l'environnement natif de l'image
+
+# Sans nginx, tous les essais pour l'accès MLFLOW WEB remontent toujours une erreur 403 Forbidden
+
+
+# Par défaut le nom du projet est le répertoire racine tout en minuscule
+# Comme le répertoire racine est Template_MLOps_accidents, le nom du projet est template_mlops_accidents
+# En ajoutant ce champs name, le nom du projet devient ce name
+# Devant les volumes ou les images par exemple, ça va toujours commencé par accidents_severity
+name: ${PROJECT_NAME}
+
+services:
+  postgres:
+    # docker run --rm postgres:16 sh -c "postgres --version && cat /etc/os-release | grep VERSION_CODENAME"
+    # Pour avoir la version exacte utilisé ici
+    # image: postgres:16
+    image: postgres:16.13-trixie
+    container_name: postgres_db
+    ports:
+      # Ce sont les ports OUT:IN définis pas défaut dans l'image
+      # DANS LES URI, INUTILE DE LE MENTIONNER CAR PRIS PAR DEFAUT
+      # La présence est donc seulement dûe à des fins pédagogiques
+      # Modifer le OUT (ex: PC): oui si nécessaire.
+      # Modifier le IN (interne): non car sinon il faut avertir tous les autres services
+      # et risque de conflits.
+      - "5432:5432"
+    environment:
+      # Identifiants utilisés par Airflow
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    volumes:
+      # Pont établi entre postgres et le volume.
+      # Les datas sont stockés dans le volume
+      # /var/... n'est qu'un répertoire logique qui permet d'accéder au contenu du volume
+      - postgres-db-volume:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 5
+    networks:
+      - mlflow-net
+    restart: always
+
+  nginx:
+    build:
+      context: ./deployments/nginx
+      dockerfile: Dockerfile
+      args:
+        # NGINX_CONF_FILE est lu dans le .env si présent sinon nginx.conf par défaut 
+        # et le build permet de le transmettre à l'ARG du Dockerfile (NGINX_CONF_FILE)
+        - NGINX_CONF_FILE=${NGINX_CONF_FILE:-nginx.conf}
+    image: ${PROJECT_NAME}-nginx:1.0-${NGINX_MODE:-prod}
+    container_name: nginx_reverse_proxy
+    ports:
+      # En mode prod, on a 443:443 et en mode débug on a 9999:80
+      # Si NGINX_PORT_... non initialisé, alors c'est le mode sécurise par défaut
+      - "${NGINX_PORT_OUT:-443}:${NGINX_PORT_IN:-443}"
+      # - "9999:80"  # port standard du web : port nginx  via web http://IP/xxx
+      # - 443:443"   # pour HTTPS
+      # - "8080:80" mode formation pour éviter tout pb via web http://IP:8080/xxx
+    environment:
+      # DOCKER_MLFLOW_TRACKING_URI est défini dans le Makefile
+      - MLFLOW_TRACKING_URI=${DOCKER_MLFLOW_TRACKING_URI}
+    networks:
+      # DHCP Docker alloue une @IP, ex: 172.1X.0.0
+      # DNS Docker lui associe le nom qui est dans le container_name ou le nom de service si absent
+      - api-net
+      # DHCP Docker alloue une @IP, ex: 172.1Y.0.0
+      # DNS Docker lui associe le nom qui est dans le container_name ou le nom de service si absent
+      - mlflow-net
+    volumes:
+      # En mode prod, on copie nginx.conf (sécurisé)
+      # Et en mode débug on copie nginx_debug (non sécurisé)
+      # Si NGINX_CONF_FILE n'es pas initialisé, c'est le mode sécurisé par défaut
+      # - ./deployments/nginx/${NGINX_CONF_FILE:-nginx.conf}:/etc/nginx/nginx.conf:ro
+      - ./deployments/nginx/certs:/etc/nginx/certs:ro
+      # - ./deployments/nginx/.htpasswd:/etc/nginx/.htpasswd:ro
+      # - ./deployments/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
+      - mlflow
+    # Redémarrage si le service s'arrête (pour le mode Local=sur une machine (Docker Compose classique))
+    restart: always
+
+  mlflow:
+    build:
+      context: .                       # . pour répertoire courant du .yml (la racine)
+      dockerfile: src/mlflow/Dockerfile # chemin relatif
+    image: ${PROJECT_NAME}-mlflow:1.0
+    container_name: mlflow_server
+    #ports: suite à introduction de nginx
+    #  - "5000:5000"
+    environment:
+      - MLFLOW_HTTP_REQUEST_TIMEOUT=60
+      - DATABASE_URL=postgresql://airflow:airflow@postgres:5432/airflow
+    networks:
+      # DHCP Docker alloue une @IP, ex: 172.1Y.0.1
+      # DNS Docker lui associe le nom qui est dans le container_name ou le nom de service si absent
+      - mlflow-net
+    volumes:
+      - mlflow-artifacts-volume:/app/artifacts  # Stockage des modèles (des .pkl)
+    # pas de tiret pour postgres car il est suivi d'un condition
+    depends_on:
+      postgres:
+        condition: service_healthy  # Attend que la DB soit vraiment prête
+    # Redémarrage si le service s'arrête (pour le mode Local=sur une machine (Docker Compose classique))
+    restart: always
+
+  train:
+    build:
+      context: .                        # . pour répertoire courant du .yml (la racine)
+      dockerfile: src/models/Dockerfile # chemin relatif
+    image: ${PROJECT_NAME}-train:1.0
+    container_name: training_service
+    # Uniquement utile si on prend une image officielle.
+    # Si on construit l'image cette info sera dans l'image
+    # working_dir: /app
+    environment:
+      # DOCKER_MLFLOW_TRACKING_URI est défini dans le Makefile
+      #- MLFLOW_TRACKING_URI=http://mlflow_server:5000
+      - MLFLOW_TRACKING_URI=${DOCKER_MLFLOW_TRACKING_URI}
+      # Pour supprimer le warning uv indiquant qu'on doit mettre à jour cette variable
+      - UV_LINK_MODE=copy
+      # Pour enlever le WARNING mlflow.utils.git_utils: Failed to import Git
+      - GIT_PYTHON_REFRESH=quiet
+    networks:
+      # DHCP Docker alloue une @IP, ex: 172.1Y.0.2
+      # DNS Docker lui associe le nom qui est dans le container_name ou le nom de service si absent
+      - mlflow-net
+    # Volumes utiles uniquement pour le dev/debug. A supprimer pour la production
+    # Ainsi, on n'a pas besoin de reconstruire l'image à chaque modif du contenu d'un de ces répertoires
+    volumes:
+      - ./src:/app/src
+      - ./data:/app/data
+      - ./models:/app/models
+      - mlflow-artifacts-volume:/app/artifacts
+      # - ./artifacts:/app/artifacts
+    depends_on:
+      - mlflow
+    # Redémarrage si le service s'arrête UNIQUEMENT EN CAS D'ERREUR (exit != 0)
+    # (pour le mode Local=sur une machine (Docker Compose classique))
+    # Train est un Job: s'arrête si succès, retente si crash.
+    restart: on-failure
+
+  api:
+    build:
+      context: .                     # . pour répertoire courant du .yml (la racine)
+      dockerfile: src/api/Dockerfile # chemin relatif
+    image: ${PROJECT_NAME}-api:1.0
+    # --- STRATÉGIE DE SCALING ---
+    # Présent uniquement pour un futur déploiement
+    # Pour replicas = 1 : container_name est autorisé et pratique pour le DNS.
+    # Si replicas > 1 : 
+    #   1. Supprimer la ligne container_name
+    #      - Docker interdit les doublons de noms
+    #      - Docker génère automatiquement des nouveaux noms différents
+    #   2. Dans nginx.conf, remplacer 'prediction_api' par 'api' (le nom du service).
+    #   3. Docker fera alors automatiquement l'équilibrage de charge (Load Balancing) entre les réplicas
+    deploy:
+      replicas: 1
+      # Si le déploiement est sur plusieurs machines (Docker Swarm)
+      # Seul cette condition est prise en compte pour le restart
+      # C'est la consigne donnée à l'entité surveille l'état du service
+      restart_policy:
+        # any: redémarrer le service quelque soit la cause de l'arrêt
+        condition: any
+    container_name: prediction_api
+    #ports:  suite à introduction de nginx
+    #  - "8000:8000"
+    environment:
+      # Dans le main.py on récupère cette variable
+      # Dans le Makefile,elle est défà à http://localhost:500O
+      # Via Docker, on doit l'initialiser ici
+      # DOCKER_MLFLOW_TRACKING_URI est défini dans le Makefile
+      #- MLFLOW_TRACKING_URI=http://mlflow_server:5000
+      - MLFLOW_TRACKING_URI=${DOCKER_MLFLOW_TRACKING_URI}
+      # Pour supprimer le warning uv indiquant qu'on doit mettre à jour cette variable
+      - UV_LINK_MODE=copy
+      # Pour enlever le WARNING mlflow.utils.git_utils: Failed to import Git
+      - GIT_PYTHON_REFRESH=quiet
+    networks:
+      # DHCP Docker alloue une @IP, ex: 172.1X.0.1
+      # DNS Docker lui associe le nom qui est dans le container_name ou le nom de service si absent
+      - api-net
+      # DHCP Docker alloue une @IP, ex: 172.1Y.0.3
+      # DNS Docker lui associe le nom qui est dans le container_name ou le nom de service si absent
+      - mlflow-net
+    volumes:
+      - ./src:/app/src
+      - mlflow-artifacts-volume:/app/artifacts  # lire les modèles (des .pkl)
+      # - ./artifacts:/app/artifacts   # indispensable pour lire les fichiers créés par mlflow
+      # - ./data:/app/data           : inutile car main.py ne l'utilise pas
+    depends_on:
+      - mlflow
+    # Redémarrage si le service s'arrête (pour le mode Local=sur une machine (Docker Compose classique))
+    restart: always
+
+networks:
+  mlflow-net:
+    # Docker attribue un sous réseau local ex:172.1X.0.0/16
+    # Switch wirtuel: ex: IP 172.1X.a.b peut communiquer avec IP 172.1X.y.z
+    # Passerelle (pont virtuel): Si IP 172.1X.a.b et IP 172.1Y.c.d déclaré dans un même service, pont créé
+    # Pont physique: 172.1X peut communiquer l'extérieur (internet). Le NAT (Network Address Translation) géré par le driver bridge.
+    driver: bridge
+  api-net:
+    driver: bridge
+
+# Création de volumes (essentiellement des databases) gérés par Docker
+# Associe vitesse et droit d'écriture, sécurité afin de garantir l'intégrité de la db
+volumes:
+  postgres-db-volume:
+  mlflow-artifacts-volume:
