@@ -9,7 +9,7 @@ Je mentionne la machine car j'ai l'impression que selon les formations, la pre-c
 Penser à bien updater `requirements.txt` avec les nouvelles librairies pour, au cas où, pouvoir régénérer si nécessaire `pyproject.toml` et `uv.lock`.
 
 #### Récupérer à partir d'une machine vierge
-git clone -b nicola https://github.com/sage-flfay/Template_MLOps_accidents.git
+git clone -b main https://github.com/sage-flfay/Template_MLOps_accidents.git
 
 ### Preparation
 POUR LA PREMIERE FOIS OU POUR REPARTIR FROM SCRATCH:
