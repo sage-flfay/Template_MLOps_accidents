@@ -45,7 +45,9 @@ rf_classifier = ensemble.RandomForestClassifier(n_jobs=-1)
 
 # Note : Si vous utilisez DagsHub, l'URI sera différent de localhost
 # Mais on laisse l'orchestrateur gérer l'expérience
-set_tracking_uri("http://localhost:5000") 
+
+port = 8080
+set_tracking_uri(f"http://localhost:{port}") 
 #set_experiment("01_Gravity_Accident")
 
 # Récupération du run actif (créé par la commande terminale :"mlflow run .") si elle existe, 

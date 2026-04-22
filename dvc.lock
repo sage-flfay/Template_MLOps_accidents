@@ -39,8 +39,8 @@ stages:
       md5: 4201106fa338c961187a0653ac139046
       size: 76581
   train:
-    cmd: uv run --active python -m src.models.train_model data/preprocessed 
-      models/model.joblib
+    cmd: uv run --active python -m src.models.train_model --train_path 
+      data/preprocessed --model_output models/model.joblib
     deps:
     - path: data/preprocessed/X_train.csv
       hash: md5
@@ -52,13 +52,13 @@ stages:
       size: 76581
     - path: src/models/train_model.py
       hash: md5
-      md5: a57c85fa00257016130906b9ac1d5e43
-      size: 2110
+      md5: f287f84bc99dbf64ade7d160e7fdfd7e
+      size: 2616
     outs:
     - path: models/model.joblib
       hash: md5
-      md5: 53783782af1e72604250e923d1c717c0
-      size: 107258361
+      md5: 3e57f13a39f012a7168b1db643a9293b
+      size: 106915961
   evaluate:
     cmd: uv run --active python -m src.models.evaluate_model models/model.joblib
       data/preprocessed metrics.json
@@ -73,14 +73,30 @@ stages:
       size: 32825
     - path: models/model.joblib
       hash: md5
-      md5: 53783782af1e72604250e923d1c717c0
-      size: 107258361
+      md5: 3e57f13a39f012a7168b1db643a9293b
+      size: 106915961
     - path: src/models/evaluate_model.py
       hash: md5
-      md5: a0e293d1944f72c379685eb3183beb0e
-      size: 5061
+      md5: ff5b0cf7757932d4163786a7353cd453
+      size: 5080
     outs:
     - path: metrics.json
       hash: md5
-      md5: a77f0bbc20adb11fad516e8779a9227b
-      size: 402
+      md5: 08db57b206920c07b1780ce993d10b03
+      size: 405
+  predict:
+    cmd: uv run --active python -m src.models.predict_model 
+      src/models/test_features.json
+    deps:
+    - path: models/model.joblib
+      hash: md5
+      md5: 3e57f13a39f012a7168b1db643a9293b
+      size: 106915961
+    - path: src/models/predict_model.py
+      hash: md5
+      md5: 0b463180f4ed06953185e12d9c3c3d9a
+      size: 1876
+    - path: src/models/test_features.json
+      hash: md5
+      md5: da7449d023f76bc18381d56e16f7737f
+      size: 374

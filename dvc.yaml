@@ -21,7 +21,8 @@ stages:
       - data/preprocessed/y_test.csv
 
   train:
-    cmd: uv run --active python -m src.models.train_model data/preprocessed models/model.joblib
+    #cmd: uv run --active python -m src.models.train_model data/preprocessed models/model.joblib
+    cmd: uv run --active python -m src.models.train_model --train_path data/preprocessed --model_output models/model.joblib
     deps:
       - data/preprocessed/X_train.csv
       - data/preprocessed/y_train.csv
@@ -36,7 +37,14 @@ stages:
       - data/preprocessed/X_test.csv
       - data/preprocessed/y_test.csv
       - src/models/evaluate_model.py
-  
+    # ===================================================================
+    # CORRECTION : Le bloc metrics doit être rattaché à evaluate
+    # car c'est ce stage qui produit le fichier metrics.json
+    # ===================================================================
+    metrics:
+      - metrics.json:
+          cache: false
+
   # ===================================================================
   # Déclenchement du predict_model (peut-être pas important)
   # ===================================================================
@@ -46,9 +54,3 @@ stages:
       - models/model.joblib
       - src/models/predict_model.py
       - src/models/test_features.json
-
-    # cache: false ==> ne pas le mettre dans .dvc/cache
-    # On veut le voir dans le github, donc faire git add metrics.json
-    metrics:
-      - metrics.json:
-          cache: false

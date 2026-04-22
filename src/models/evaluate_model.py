@@ -52,8 +52,9 @@ def evaluate(model_file_path, data_path, metrics_file_path):
     #=====================================================================
     # Obtention d'un dictionnaire de métriques "aplati" pour MLflow
     #=====================================================================
+    port = 8080
     # Utilisation de MLflow pour le suivi des métriques
-    set_tracking_uri("http://localhost:5000") 
+    set_tracking_uri(f"http://localhost:{port}") 
 
     set_experiment("01_Gravity_Accident")
 

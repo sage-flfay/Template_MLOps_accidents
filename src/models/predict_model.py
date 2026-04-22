@@ -7,7 +7,9 @@ import json
 from src.models.mlflow_utils import start_run, log_params, log_metrics, set_tracking_uri
 
 # Load your saved model
-loaded_model = joblib.load("./src/models/trained_model.joblib")
+#loaded_model = joblib.load("./src/models/trained_model.joblib")
+# Par le chemin correct à la racine du projet :
+loaded_model = joblib.load("models/model.joblib")
 
 
 def predict_model(features):
@@ -39,8 +41,9 @@ if __name__ == "__main__":
     # - MLflow considère le inputs comme des paramètres
     # - et les résultats comme des métriques.
     #=====================================================================
+    port = 8080
     # On configure le tracking URI pour MLflow
-    set_tracking_uri("http://localhost:5000")
+    set_tracking_uri(f"http://localhost:{port}")
     
     # Démarrage d'un run MLflow pour la prédiction
     with start_run(run_name="Prediction_Run") as run:
