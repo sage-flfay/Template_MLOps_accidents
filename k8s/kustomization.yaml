@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: accidents-severity
+
+resources:
+  - 00-namespace.yaml
+  - 01-configmap-secret.yaml
+  - 02-persistent-volumes.yaml
+  - 03-postgres.yaml
+  - 04-mlflow.yaml
+  - 05-train-job.yaml
+  - 06-api.yaml
+  - 07-ingress.yaml
