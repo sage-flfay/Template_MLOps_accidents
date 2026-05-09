@@ -4,8 +4,13 @@ kind: Ingress
 metadata:
   name: accidents-severity-ingress
   namespace: accidents-severity
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure  # ← HTTPS port 443
+    traefik.ingress.kubernetes.io/router.tls: "true"  
 spec:
   ingressClassName: traefik
+  tls:
+    - secretName: nginx-tls-secret   
   rules:
     - http:
         paths:

@@ -32,6 +32,15 @@ docker pull postgres:16.13-trixie
 docker tag postgres:16.13-trixie localhost:5000/postgres:16.13-trixie
 docker push localhost:5000/postgres:16.13-trixie
 
+
+# Générer le certificat auto-signé 
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout tls.key -out tls.crt -subj "/CN=localhost"
+
+# Injecter dans Kubernetes
+kubectl create secret tls accidents-tls-secret --cert=tls.crt --key=tls.key -n accidents-severity
+
+kubectl create secret generic dagshub-secret --from-literal=DAGSHUB_ACCESS_KEY_ID=<votre_key_id> --from-literal=DAGSHUB_SECRET_ACCESS_KEY=<votre_secret_key> --from-literal=DAGSHUB_USER=sage-flfay  -n accidents-severity
+
 #lancer!
 kubectl apply -k k8s/
 

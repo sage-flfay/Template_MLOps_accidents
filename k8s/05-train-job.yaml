@@ -19,14 +19,23 @@ spec:
       containers:
         - name: train
           image: localhost:5000/accidents_severity-train:1.0
-          imagePullPolicy: IfNotPresent
-          envFrom:
-            - configMapRef:
-                name: accidents-severity-config
+          imagePullPolicy: IfNotPresent          
           volumeMounts:
             - name: mlflow-artifacts
               mountPath: /app/artifacts
+          envFrom:
+            - configMapRef:
+                name: accidents-severity-config
+            - secretRef:
+                name: dagshub-secret   
+          env:      
+            - name: MLFLOW_TRACKING_URI     # depuis ConfigMap
+            - name: UV_LINK_MODE            # depuis ConfigMap
+            - name: GIT_PYTHON_REFRESH      # depuis ConfigMap
+            - name: AWS_ACCESS_KEY_ID       # ← depuis dagshub-secret (DAGSHUB_ACCESS_KEY_ID)
+            - name: AWS_SECRET_ACCESS_KEY   # ← depuis dagshub-secret (DAGSHUB_SECRET_ACCESS_KEY)                
       volumes:
         - name: mlflow-artifacts
           persistentVolumeClaim:
             claimName: mlflow-artifacts-pvc
+            
