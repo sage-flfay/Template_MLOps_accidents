@@ -61,4 +61,5 @@ CMD ["sh", "-c", "mlflow server \
      --backend-store-uri ${DATABASE_URL} \
      --default-artifact-root /app/artifacts \
      --allowed-hosts '*' \
+     --static-prefix /mlflow \
      --cors-allowed-origins '*'"]

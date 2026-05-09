@@ -1,35 +1,13 @@
-# Traefik est l'ingress controller inclus par défaut dans k3s
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: accidents-severity-ingress
-  namespace: accidents-severity
-  annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure  # ← HTTPS port 443
-    traefik.ingress.kubernetes.io/router.tls: "true"  
-spec:
-  ingressClassName: traefik
-  tls:
-    - secretName: nginx-tls-secret   
-  rules:
-    - http:
-        paths:
-          - path: /api
-            pathType: Prefix
-            backend:
-              service:
-                name: api-service
-                port:
-                  number: 8000
-          - path: /mlflow
-            pathType: Prefix
-            backend:
-              service:
-                name: mlflow-service
-                port:
-                  number: 5000
----
-# Strip du préfixe /api avant transmission au service
+# ============================================================
+# Ingress Traefik — IngressRoute (CRD native k3s)
+#
+# ============================================================
+
+# ------------------------------------------------------------
+# Middleware : supprime le préfixe /api avant transmission
+# /api/health  →  /health   transmis à api-service:8000
+# /api/docs    →  /docs     transmis à api-service:8000
+# ------------------------------------------------------------
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
@@ -39,7 +17,13 @@ spec:
   stripPrefix:
     prefixes:
       - /api
+
 ---
+# ------------------------------------------------------------
+# Middleware : supprime le préfixe /mlflow avant transmission
+# /mlflow/     →  /         transmis à mlflow-service:5000
+# /mlflow/runs →  /runs     transmis à mlflow-service:5000
+# ------------------------------------------------------------
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
@@ -49,3 +33,71 @@ spec:
   stripPrefix:
     prefixes:
       - /mlflow
+
+---
+# ------------------------------------------------------------
+# IngressRoute HTTP (port 80)
+# ------------------------------------------------------------
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: accidents-severity-http
+  namespace: accidents-severity
+spec:
+  entryPoints:
+    - web          # entrypoint HTTP port 80 natif k3s
+  routes:
+    # --- API FastAPI ---
+    - match: PathPrefix(`/api`)
+      kind: Rule
+      middlewares:
+        - name: strip-api
+      services:
+        - name: api-service
+          port: 8000
+    # --- MLflow UI ---
+    - match: PathPrefix(`/mlflow`)
+      kind: Rule
+      middlewares:
+        - name: strip-mlflow
+      services:
+        - name: mlflow-service
+          port: 5000
+        
+ 
+
+---
+# ------------------------------------------------------------
+# IngressRoute HTTPS (port 443) 
+#
+# Prérequis : créer le secret TLS au préalable :
+#   openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+#     -keyout tls.key -out tls.crt -subj "/CN=localhost"
+#   kubectl create secret tls accidents-tls-secret \
+#     --cert=tls.crt --key=tls.key -n accidents-severity
+# ------------------------------------------------------------
+# apiVersion: traefik.io/v1alpha1
+# kind: IngressRoute
+# metadata:
+#   name: accidents-severity-https
+#   namespace: accidents-severity
+# spec:
+#   entryPoints:
+#     - websecure    # entrypoint HTTPS port 443 natif k3s
+#   tls:
+#     secretName: accidents-tls-secret
+#   routes:
+#     - match: PathPrefix(`/api`)
+#       kind: Rule
+#       middlewares:
+#         - name: strip-api
+#       services:
+#         - name: api-service
+#           port: 8000
+#     - match: PathPrefix(`/mlflow`)
+#       kind: Rule
+#       middlewares:
+#         - name: strip-mlflow
+#       services:
+#         - name: mlflow-service
+#           port: 5000
