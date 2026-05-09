@@ -33,8 +33,8 @@ data/
 mlruns/
 
 # --- DVC PIPELINES (On garde les .dvc mais on exclut le reste) ---
-dvc.yaml
-dvc.lock
+#dvc.yaml
+#dvc.lock
 .dvcignore
 # --- Cache très lourd et inutile
 .dvc/cache/

@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: postgres
-          image: localhost:5000/postgres:16.13-trixie
+          image: localhost:8081/postgres:16.13-trixie
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5432

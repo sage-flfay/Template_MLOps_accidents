@@ -17,12 +17,12 @@ spec:
     spec:
       initContainers:
         - name: wait-for-postgres
-          image: localhost:5000/busybox:1.36
+          image: localhost:8081/busybox:1.36
           imagePullPolicy: IfNotPresent
           command: ["sh", "-c", "until nc -z postgres-service 5432; do echo 'Attente Postgres...'; sleep 2; done"]
       containers:
         - name: mlflow
-          image: localhost:5000/accidents_severity-mlflow:1.0
+          image: localhost:8081/accidents_severity-mlflow:1.0
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5000
