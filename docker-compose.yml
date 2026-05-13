@@ -1,0 +1,540 @@
+# Fichier docker-compose.yml à la racine
+
+# Warning indiquant: version is obsolete
+# version: '3.8'
+# WARNING: NE PAS MONTER UN VOLUME EN FAISANT .:/app (ou alors monter impérativement le volume - /app/.venv POUR LE FORCER A ETRE VIDE)
+# POURQUOI: .:app va créer un pont entre le .venv de la machine et /app/.venv .
+# Donc l'env de la machine est utilisé au profit de l'env de l'image. On touche à l'intégrité de l'image
+# D'où un risque d'incompatibilité car on n'utilise plus l'environnement natif de l'image
+
+# Sans nginx, tous les essais pour l'accès MLFLOW WEB remontent toujours une erreur 403 Forbidden
+
+# WARNING: UTILISATIAON DES CONTAINER-NAME UNIQUEMENT VALABLE
+# SI PAS DE REPLICA OU REPLICA=1 DONC AUCUN AUTRE SERVICE EN PARALLELE
+# WARNING: SINON IMPERATIF DE SUPPRIMER LE CONTAINE-NAME SI REPLICA > 1
+
+# Par défaut le nom du projet est le répertoire racine tout en minuscule
+# Comme le répertoire racine est Template_MLOps_accidents, le nom du projet est template_mlops_accidents
+# En ajoutant ce champs name, le nom du projet devient ce name
+# Devant les volumes ou les images par exemple, ça va toujours commencé par accidents_severity
+name: ${PROJECT_NAME}
+
+# --- TEMPLATE COMMUN POUR LE HEALTHCHECK --
+# valeurs augmentées essentiellement pour airflow 3.x qui consomme beaucoup
+# de CPU au démarrage et qui ralentit les réponses des autres services
+x-healthcheck-config: &standard-healthcheck
+  interval: 16s
+  timeout: 15s
+  retries: 10
+  # Pendant cette période, le test est fait mais les erreurs ne sont pas comptabilisées
+  # En cas de succès pendant cette période, le service passe à healthly, donc pas pénalisant
+  # Utilité: permet de prendre en compte le temps de chargement pour de gros services
+  # Essentiellement pour airflow-webserver qui est long à l'initialisation
+  start_period: 300s
+
+# --- TEMPLATE COMMUN AIRFLOW --
+# x-: indiquer à docker-compose que c'est un bloque personnalisé
+# &airflow-common: ancrage; tout le contenu est mémorisé par docker-compose
+# <<: *airflow-common: syntaxe utilisée pour dire de prendre le contenu du bloc ci-dessous
+x-airflow-common: &airflow-common
+  image: ${PROJECT_NAME}-airflow:1.0
+  # &airflow-common-env: même principe que &airflow-common (ancre dans une ancre)
+  environment: &airflow-common-env
+    PROJECT_NAME: ${PROJECT_NAME}
+    # Utilisé pour l'environnement nécessaire au dags
+    MLFLOW_TRACKING_URI: ${DOCKER_MLFLOW_TRACKING_URI}
+    # Utilsé par différents services sinon risque de le mettre dans un nom par défaut
+    MLFLOW_EXPERIMENT_NAME: ${PROJECT_NAME}
+
+    AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+    # Indispensable pour faire tourner Airflow avec Celery
+    AIRFLOW__CELERY__BROKER_URL: "redis://:@redis:6379/0"
+
+    # Connexion à la DB Postgres créée dans le service postgres
+    # AIRFLOW_CONN_XXXX_YYYY: XXXX_YYYY utilisé dans conn_id="XXX" du SQLExecuteQueryOperator dans les dags
+    AIRFLOW_CONN_POSTGRES_DEFAULT: "postgres://airflow:airflow@postgres:5432/airflow"
+    # AIRFLOW_CONN_POSTGRES_DEFAULT: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_db:5432/${POSTGRES_DB}"
+    # Nouvelle norme (Officielle depuis 2.3, utilisée par Airflow 2.10+)
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: "postgresql+psycopg2://airflow:airflow@postgres:5432/airflow"
+    # AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: "postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_db:5432/${POSTGRES_DB}"
+    # Ancienne norme (gardée pour pour la rétrocompatibilité pour certains modules au cas où)
+    AIRFLOW__CORE__SQL_ALCHEMY_CONN: "postgresql+psycopg2://airflow:airflow@postgres:5432/airflow"
+    AIRFLOW__CELERY__RESULT_BACKEND: "db+postgresql://airflow:airflow@postgres:5432/airflow"
+    # AIRFLOW__CORE__SQL_ALCHEMY_CONN: "postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_db:5432/${POSTGRES_DB}"
+    # AIRFLOW__CELERY__RESULT_BACKEND: "db+postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres_db:5432/${POSTGRES_DB}"
+
+    # Variables pour Nginx
+    # Variable pour Airflow 2.x (gardée au cas où);
+    # Pour le BASE_URL, l'ajout de /airflow est comme le rootpath. Tout est déplacé à partir de /airflow
+    AIRFLOW__WEBSERVER__BASE_URL: ${NGINX_PROTOCOL}://${PROJECT_IP}/airflow
+    AIRFLOW__WEBSERVER__ENABLE_PROXY_FIX: "true"
+    # Uniquement pour le débug
+    # WEB Airflow, dans Admin, option CONFIG, autorise la visualisation de la config
+    # AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "True"
+
+    # usr/pwd pour les services airflow-init et airflow-webserver
+    # mais autant le mettre pour tous, ce n'est pas gênant et c'est centralisé
+    _AIRFLOW_WWW_USER_USERNAME: "${_AIRFLOW_WWW_USER_USERNAME:-admin}"
+    _AIRFLOW_WWW_USER_PASSWORD: "${_AIRFLOW_WWW_USER_PASSWORD:-admin}"
+
+    # Sécurité des secrets (usr/pw). On obtient une clé grâce à la commande:
+    # python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    # Réception d'un mail d'alerte de GitGuardian indiquant Fernet Key exposed on GitHub
+    # Par sécurité, la clé est généré dans le Makefile, stocké dans le .env
+    # Et la clé en clair est remplacée par AIRFLOW_FERNET_KEY dans docker-compose.yml
+    # Ainsi elle n'est plus présente en clair dans le GitHub. Dans le Makefile elle est stockée dans
+    # echo "AIRFLOW_FERNET_KEY=$$FERNET" > .env ==> On utilise la variable définie dans le .env
+    AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY}
+    # True: au démarrage Airflow, les dags sont en pause. Appui manuel sur le bouton pour exécuter un dag
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+    # Accès Programmatique (API).
+    # De l'extérieur, on peut envoyer des cmd CLI (ex: curl) avec son usr/pw à Airflow
+    # AIRFLOW__API__AUTH_BACKEND: "airflow.api.auth.backend.basic_auth"
+    # Ajout de S à la fin de BACKEND pour supprimer le warning suivant et ajoute Interface Web (session)
+    # DeprecationWarning: The auth_backend option in [api] has been renamed to auth_backends
+    AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"
+    # false: les exemples de dags fournis par Airflow ne sont pas téléchargés
+    # gênant car ils sont nombreux
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    # Pour résoudre définitivement le problème de Run History Table qui génère Invalid URL 'http://:8793/log/dag_i
+    # Le pb est que parfois l'ID du service est récupéré au dépend du Name d'ou le conflit car l'ID n'a pas
+    # sa résolution. La commande ci-dessous pour ne se référer qu'au hostname défini dans chaque service airflow
+    # excepté pour airlfow-init qui est un service éphémère
+    AIRFLOW__CORE__HOSTNAME_CALLABLE: 'socket.gethostname'
+    # Pour la suppression du warning:
+    # /home/airflow/.local/lib/python3.12/site-packages/flask_limiter/extension.py:333 UserWarning:
+    # Using the in-memory storage for tracking rate limits as no storage was explicitly specified.
+    # This is not recommended for production use
+    # Le warning est toujours présent mais la commande ci-dessous reponds redis://:@redis:6379/0 donc ok
+    # docker exec -it airflow-webserver airflow config get-value webserver ratelimit_storage_uri
+    # Hypothèse: Flask regarde l'env avant les updates et génère l'alarme
+    AIRFLOW__WEBSERVER__RATELIMIT_STORAGE_URI: "redis://:@redis:6379/0"
+  networks:
+    - airflow-net
+    - mlflow-net
+    - api-net
+  volumes:
+    #- ./src:/app/src
+    # utilisé dans le dag par le BashOperator pour transmettre la variable à tous les DockerOperators
+    # Impératif de créer le fichier params.yaml avant de démarrer ce service sinon ça plante
+    # WARNING: si le fichier n'existe pas au préalable, docker-compose crée automatiquement le répertoire param.yaml
+    - ./params.yaml:/opt/airflow/params.yaml
+    # Pour la phase débug seulement. Quand on choisit la prod, on passe obligatoirement
+    # par la regénération d'images et donc les modifs de dags seront automatiquement prises en compte
+    - ./deployments/airflow/dags:/opt/airflow/dags
+    - ./deployments/airflow/logs:/opt/airflow/logs
+    # ajouter des fonctionnalités personnalisées à Airflow
+    # Les plugins sont lancés au démarrage d'Airflow, donc si ajout d'un plugin alors qu'Airflow tourne,
+    # il faut redémarrer Airflow pour que le nouveau plugin soit pris en compte
+    - ./deployments/airflow/plugins:/opt/airflow/plugins
+    # Socket Unix : point de communication en temps réel entre le client Docker (Airflow)
+    # et le Docker Daemon (moteur) qui tourne sur l'hôte Ubuntu.
+    # Le moteur gère le cycle de vie : création, démarrage, arrêt (stop/kill(si stop inefficace)) et suppression.
+    # Ce montage permet au DockerOperator d'Airflow de piloter le moteur de l'hôte
+    # pour instancier des conteneurs isolés (ex: lancer un conteneur de training).
+    - /var/run/docker.sock:/var/run/docker.sock
+    # Lorsque Airflow génère le modèle, il est stocké dans le volume
+    - mlflow-artifacts-volume:/app/artifacts # Stockage des modèles (des .pkl)
+  depends_on: &depends_on
+    fix-volumes-permissions: { condition: service_completed_successfully }
+    # Surveille l'état du healthcheck défini dans postgres.
+    # Bloque le démarrage d'Airflow tant que le test pg_isready n'est pas en succès.
+    redis: { condition: service_healthy }
+    postgres: { condition: service_healthy }
+  healthcheck:
+    <<: *standard-healthcheck
+  # user AIRFLOW_UID (souvent 1000 qui est le premier ID user autorisé)
+  # sinon 50000 par défaut (ID interne du user aiflow de l'image officielle Airflow).
+  # Tout est fait en tant que droits user et non pas droits root
+  # Sécurité : On tourne en mode "Non-Root". En cas de faille, l'attaquant n'a pas
+  # les privilèges super-utilisateur.
+  # la commande est use: "${user}":"${groupe}"; l'image airflow utilise le Groupe ID (GID) 0.
+  # Dans l'image airflow, le GID 0 possède les droits d'écritures sur les dossiers systèmes (/opt/aiflow)
+  # Cela garantit que le user, quelque soit son UID, a les droits rwx
+  # Dans le Makefile, AIRFLOW_GID = 0 et donc permet à Airflow d'avoir les droits rwx
+  # user: "${AIRFLOW_UID:-50000}:${AIRFLOW_GID:-50000}" en rapport avec la formation
+  # user: "${AIRFLOW_UID:-50000}:${AIRFLOW_GID:-0}" mais AIRFLOW_GID=0 donc au final
+  # La commande la plus simple et la plus efficace pour sécuriser le déploiement
+  user: "${AIRFLOW_UID:-50000}:0"
+
+services:
+  # Service éphémère qui affecte les droits users au volume car par défaut
+  # le DockerOperator (dans le dag) va gérer ce volume avec les droits roots
+  # malgré le fait que le dag créé est conçu pour que DockerOperator utilise les 
+  # droits user au lieu des droits par défaut = root
+  fix-volumes-permissions:
+    image: alpine:3.19
+    container_name: fix_volumes_perms
+    user: root
+    # Pas vraiement utile mais évite à docker compose de créer un network_xxx_default
+    networks:
+      - airflow-net
+      - mlflow-net
+    # NB: le docker lit d'abord le fichier docker-compose.yaml. Tous les répertoires 
+    # définis dans les volumes et qui sont manquant sont créés avec les droits root.
+    # Ce "volumes" contient la liste des répertoires absent du github (car logs ou data)
+    # qu'on doit réaffecter avec les droits users et les permissions 755. Donc c'est côté
+    # VM que les droits / permissions sont modifiés. La seconde partie est juste là pour
+    # savoir sur quoi ça porte avec le 1er dir par mnt pour savoir que ça vient de
+    # fix-volumes-permissions en cas de problème
+    # Logiquement, tous les volumes créés sur lesquelles il y a une interaction user pour 
+    # modifier le contenu doivent aussi figurer dans ce volumes sous peine de générer des erreurs.
+    # Postgres et Redis sont absent car ce sont comme 2 boites noires et il n'y a aucune
+    # interaction user pour modifier le contenu
+    volumes:
+      - mlflow-artifacts-volume:/mnt/artifacts
+      - ./deployments/airflow/logs:/mnt/airflow/logs
+      - ./data:/mnt/data
+    # Docker Compose remplacera ces variables par les valeurs exportées par le Makefile
+    command:
+      sh -c "chown -R ${USER_ID}:${GROUP_ID} /mnt/artifacts /mnt/airflow/logs /mnt/data
+             && chmod -R 775 /mnt/artifacts /mnt/airflow/logs /mnt/data"
+
+  postgres:
+    # docker run --rm postgres:16 sh -c "postgres --version && cat /etc/os-release | grep VERSION_CODENAME"
+    # Pour avoir la version exacte utilisé ici
+    # image: postgres:16
+    image: postgres:16.13-trixie
+    container_name: postgres_db
+    ports:
+      # Ce sont les ports OUT:IN définis pas défaut dans l'image
+      # DANS LES URI, INUTILE DE LE MENTIONNER CAR PRIS PAR DEFAUT
+      # Accès local uniquement (localhost) pour le debug. 
+      # Pour des raisons de sécurité, empêche l'exposition sur l'IP publique
+      - "127.0.0.1:5432:5432"
+    environment:
+      # Par défaut on ne peut créer qu'une seule database. Elle est pour Airflow
+      # Identifiants utilisés par Airflow
+      - POSTGRES_DB=airflow
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+    volumes:
+      # Pont établi entre postgres et le volume.
+      # Les datas sont stockés dans le volume
+      # /var/... n'est qu'un répertoire logique qui permet d'accéder au contenu du volume
+      - postgres-db-volume:/var/lib/postgresql/data
+    healthcheck:
+      <<: *standard-healthcheck
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+    networks:
+      # Airflow et Mlflow databases créés sur postgres et besoin de discuter avec ces 2 services
+      - mlflow-net
+      - airflow-net
+    restart: always
+
+  # Indispensable pour faire tourner Airflow avec Celery
+  redis:
+    image: redis:7
+    container_name: redis_7
+    networks:
+      # Pour qu'Airflow puisse lui parler
+      - airflow-net
+    ports:
+      # Accès local uniquement (localhost) pour le debug. 
+      # Bloque l'accès externe pour sécuriser le flux Celery/Flower.
+      - "127.0.0.1:6379:6379"
+    volumes:
+      # docker exec -it redis_7 redis-cli CONFIG GET dir confirme que c'est bien /data
+      - redis-data-volume:/data
+    healthcheck:
+      <<: *standard-healthcheck
+      test: ["CMD", "redis-cli", "ping"]
+    restart: always
+
+  mlflow:
+    # Important: Pour rappel, comme le context est la racine (.) 
+    # donc seul le .dockerignore à la racine est pris en compte
+    # Préférable de faire ainsi pour prendre en compte les updates
+    # supplémentaires au cas où. 
+    # Cela signifie que le .dockerignore doit être precis pour bien
+    # exclure tous les fichiers lourds ainsi que certains petits fichiers
+    # qui pourraient nuire à l'image Docker
+    build:
+      context: .                        # . pour répertoire courant du .yml (la racine)
+      dockerfile: src/mlflow/Dockerfile # chemin relatif
+    image: ${PROJECT_NAME}-mlflow:1.0
+    container_name: mlflow_server
+    #ports: suite à introduction de nginx
+    #  - "5000:5000"
+    environment:
+      - MLFLOW_HTTP_REQUEST_TIMEOUT=60
+      # Auparavant, il y avait airflow mais conflit avec x-airflow-common: &airflow-common
+      # car dans ce cas, MLFLOW et AIRFLOW utilise la même database et le conflit apparait
+      # Dans le Makefile, après le démarrage de postgres, création de la database pour mlflow
+      # avec les mêmes usr/pwd que airflow
+      - DATABASE_URL=postgresql://airflow:airflow@postgres:5432/mlflow
+    networks:
+      # Pour communiquer avec l'API, Nginx et Postgres
+      - mlflow-net
+      # Recevoir les métriques et modèles envoyés par les jobs Airflow (Train).
+      - airflow-net
+    volumes:
+      - mlflow-artifacts-volume:/app/artifacts  # Stockage des modèles (des .pkl)
+    # pas de tiret pour postgres car il est suivi d'un condition
+    depends_on:
+      fix-volumes-permissions: { condition: service_completed_successfully }
+      postgres: { condition: service_healthy }
+    healthcheck:
+      <<: *standard-healthcheck
+      # curl n'est pas dans l'image 3.12-slim. Pour ne pas surcharger l'image, on ne le mets pas
+      # test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      # urllib.request est présent par défaut dans l'image 3.12-slim
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/')"]
+    # Redémarrage si le service s'arrête (pour le mode Local=sur une machine (Docker Compose classique))
+    restart: always
+
+  # AIRFLOW (Orchestration)
+  airflow-webserver:
+    # On construit l'image ici. Elle sera réutilisée dans les autres services airflow
+    build:
+      context: .                                 # . pour répertoire courant du .yml (la racine)
+      dockerfile: deployments/airflow/Dockerfile # chemin relatif
+    # prendre le contenu de x-airflow-common (défini tout en haut)
+    <<: *airflow-common
+    container_name: airflow-webserver
+    # NB: le nom du hostname est indépendant du nom du service ou du container
+    # Pour des raisons de simplicité/clarté, on reprend le même nom
+    hostname: airflow-webserver
+    # Entrypoint script de l'image Airflow recoit webserver en Airflow 2.x
+    command: webserver
+    # port 8080: non exposé car Nginx s'en occupe
+    healthcheck:
+      <<: *standard-healthcheck
+      # Rajout de /airflow dû à AIRFLOW__WEBSERVER__BASE_URL: ${NGINX_PROTOCOL}://${PROJECT_IP}/airflow
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/airflow/health"]
+    restart: always
+
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: airflow-scheduler
+    hostname: airflow-scheduler
+    command: scheduler
+    depends_on:
+      <<: *depends_on
+      airflow-webserver: { condition: service_healthy }
+    healthcheck:
+      <<: *standard-healthcheck
+      test: ["CMD-SHELL", 'airflow jobs check --job-type SchedulerJob --hostname "$${HOSTNAME}"']
+    restart: always
+
+  airflow-worker:
+    <<: *airflow-common
+    container_name: airflow-worker
+    # Indispensable pour éviter les conflits d'identité (ex: run_history_table).
+    # Sur certaines versions de Docker Engine (ex: v24), l'ID court du conteneur (ex: 8df2dddf73d0) 
+    # est utilisé par défaut comme Hostname et injecté dans les alias réseau.
+    # Sans 'hostname' explicite, le worker s'enregistre auprès du Scheduler/Redis via son ID unique.
+    # Si le conteneur est recréé, l'ID change, l'entité réceptrice ne reconnaît plus le worker
+    # et les tâches restent bloquées. Forcer le hostname garantit une identité réseau immuable.
+    # indispensable sinon conflit dès le run_history_table
+    # En faisant docker inspect airflow-worker, on observe les 3 aliases: airflow-worker
+    # airflow-worker et par exemple 8df2dddf73d0 qui est l'ID
+    hostname: airflow-worker
+    command: celery worker
+    depends_on:
+      <<: *depends_on
+      airflow-scheduler: { condition: service_healthy }
+    healthcheck:
+      <<: *standard-healthcheck
+      test:
+        - "CMD-SHELL"
+        - 'celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"'
+    restart: always
+
+  airflow-init:
+    <<: *airflow-common
+    command: version
+    environment:
+      <<: *airflow-common-env
+      # Force la migration de la db
+      _AIRFLOW_DB_MIGRATE: "true"
+      _AIRFLOW_WWW_USER_CREATE: "true"
+    # SURTOUT PAS DE RESTART ICI CAR CE N'EST PAS UN SERVICE MAIS UNE TACHE/JOB
+
+  # Pour voir le status des workers (utile avec plusieurs workers)
+  airflow-flower:
+    <<: *airflow-common
+    container_name: airflow-flower
+    hostname: airflow-flower
+    command: celery flower
+    environment:
+      <<: *airflow-common-env
+      # Pour indiquer que c'est @IP/flower/xxx pour accéder aux services proposés sur cette page
+      # NB: avec <<: ensuite on doit faire XXXX: YYYY et -XXXX=YYYY est interdit
+      FLOWER_URL_PREFIX: flower
+    depends_on:
+      <<: *depends_on
+      airflow-worker: { condition: service_healthy }
+    #ports:
+    #  - 5555:5555
+    healthcheck:
+      <<: *standard-healthcheck
+      test: ["CMD", "curl", "--fail", "http://localhost:5555/flower/"]
+    restart: always
+
+  train:
+    build:
+      context: .                        # . pour répertoire courant du .yml (la racine)
+      dockerfile: src/models/Dockerfile # chemin relatif
+    image: ${PROJECT_NAME}-train:1.0
+    container_name: training_service
+    # Uniquement utile si on prend une image officielle.
+    # Si on construit l'image cette info sera dans l'image
+    # working_dir: /app
+    environment:
+      # DOCKER_MLFLOW_TRACKING_URI est défini dans le Makefile
+      #- MLFLOW_TRACKING_URI=http://mlflow_server:5000
+      - MLFLOW_TRACKING_URI=${DOCKER_MLFLOW_TRACKING_URI}
+      # Pour supprimer le warning uv indiquant qu'on doit mettre à jour cette variable
+      - UV_LINK_MODE=copy
+      # Pour enlever le WARNING mlflow.utils.git_utils: Failed to import Git
+      - GIT_PYTHON_REFRESH=quiet
+    networks:
+      # Permettre à train de communiquer avec Mlflow et si nécessaire avec Airflow
+      - mlflow-net
+      - airflow-net
+    # Volumes utiles uniquement pour le dev/debug. A supprimer pour la production
+    # Ainsi, on n'a pas besoin de reconstruire l'image à chaque modif du contenu d'un de ces répertoires
+    volumes:
+      - ./src:/app/src
+      - ./data:/app/data
+      - ./models:/app/models
+      - mlflow-artifacts-volume:/app/artifacts
+      # - ./artifacts:/app/artifacts
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    # Redémarrage si le service s'arrête UNIQUEMENT EN CAS D'ERREUR (exit != 0)
+    # (pour le mode Local=sur une machine (Docker Compose classique))
+    # Train est un Job: s'arrête si succès, retente si crash.
+    restart: on-failure
+
+  api:
+    build:
+      context: .                     # . pour répertoire courant du .yml (la racine)
+      dockerfile: src/api/Dockerfile # chemin relatif
+    image: ${PROJECT_NAME}-api:1.0
+    # --- STRATÉGIE DE SCALING ---
+    # Présent uniquement pour un futur déploiement
+    # Pour replicas = 1 : container_name est autorisé et pratique pour le DNS.
+    # Si replicas > 1 : 
+    #   1. Supprimer la ligne container_name
+    #      - Docker interdit les doublons de noms
+    #      - Docker génère automatiquement des nouveaux noms différents
+    #   2. Dans nginx.conf, remplacer 'prediction_api' par 'api' (le nom du service).
+    #   3. Docker fera alors automatiquement l'équilibrage de charge (Load Balancing) entre les réplicas
+    deploy:
+      replicas: 1
+      # Si le déploiement est sur plusieurs machines (Docker Swarm)
+      # Seul cette condition est prise en compte pour le restart
+      # C'est la consigne donnée à l'entité surveille l'état du service
+      restart_policy:
+        # any: redémarrer le service quelque soit la cause de l'arrêt
+        condition: any
+    container_name: prediction_api
+    #ports:  suite à introduction de nginx
+    #  - "8000:8000"
+    environment:
+      # Dans le main.py on récupère cette variable
+      # Dans le Makefile,elle est défà à http://localhost:500O
+      # Via Docker, on doit l'initialiser ici
+      # DOCKER_MLFLOW_TRACKING_URI est défini dans le Makefile
+      #- MLFLOW_TRACKING_URI=http://mlflow_server:5000
+      - MLFLOW_TRACKING_URI=${DOCKER_MLFLOW_TRACKING_URI}
+      # Pour supprimer le warning uv indiquant qu'on doit mettre à jour cette variable
+      - UV_LINK_MODE=copy
+      # Pour enlever le WARNING mlflow.utils.git_utils: Failed to import Git
+      - GIT_PYTHON_REFRESH=quiet
+    networks:
+      # DHCP Docker alloue une @IP, ex: 172.1X.0.1
+      # DNS Docker lui associe le nom qui est dans le container_name ou le nom de service si absent
+      - api-net
+      # DHCP Docker alloue une @IP, ex: 172.1Y.0.3
+      # DNS Docker lui associe le nom qui est dans le container_name ou le nom de service si absent
+      - mlflow-net
+    volumes:
+      - ./src:/app/src
+      - mlflow-artifacts-volume:/app/artifacts  # lire les modèles (des .pkl)
+      # - ./artifacts:/app/artifacts   # indispensable pour lire les fichiers créés par mlflow
+      # - ./data:/app/data           : inutile car main.py ne l'utilise pas
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    healthcheck:
+      <<: *standard-healthcheck
+      # curl n'est pas dans l'image 3.12-slim. Pour ne pas surcharger l'image, on ne le mets pas
+      #test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      # urllib.request est présent par défaut dans l'image 3.12-slim
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+    # Redémarrage si le service s'arrête (pour le mode Local=sur une machine (Docker Compose classique))
+    restart: always
+
+  nginx:
+    build:
+      context: ./deployments/nginx
+      dockerfile: Dockerfile
+      args:
+        # NGINX_CONF_FILE est lu dans le .env si présent sinon nginx.conf par défaut 
+        # et le build permet de le transmettre à l'ARG du Dockerfile (NGINX_CONF_FILE)
+        - NGINX_CONF_FILE=${NGINX_CONF_FILE:-nginx.conf}
+    image: ${PROJECT_NAME}-nginx:1.0-${NGINX_MODE:-prod}
+    container_name: nginx_reverse_proxy
+    ports:
+      # En mode prod, on a 443:443 et en mode débug on a 9999:80
+      # Si NGINX_PORT_... non initialisé, alors c'est le mode sécurise par défaut
+      - ${NGINX_PORT_OUT:-443}:${NGINX_PORT_IN:-443}
+      # - "9999:80"  # port standard du web : port nginx  via web http://IP/xxx
+      # - 443:443"   # pour HTTPS
+      # - "8080:80" mode formation pour éviter tout pb via web http://IP:8080/xxx
+    environment:
+      # DOCKER_MLFLOW_TRACKING_URI est défini dans le Makefile
+      - MLFLOW_TRACKING_URI=${DOCKER_MLFLOW_TRACKING_URI}
+    networks:
+      # DHCP Docker alloue une @IP, ex: 172.1X.0.0
+      # DNS Docker lui associe le nom qui est dans le container_name ou le nom de service si absent
+      - api-net
+      # DHCP Docker alloue une @IP, ex: 172.1Y.0.0
+      # DNS Docker lui associe le nom qui est dans le container_name ou le nom de service si absent
+      - mlflow-net
+      # Permet à Nginx d'accéder aux interfaces d'Airflow (Webserver)
+      # et assure la résolution DNS pour les communications entre le pilotage et le monitoring.
+      - airflow-net
+    volumes:
+      # En mode prod, on copie nginx.conf (sécurisé)
+      # Et en mode débug on copie nginx_debug (non sécurisé)
+      # Si NGINX_CONF_FILE n'es pas initialisé, c'est le mode sécurisé par défaut
+      # - ./deployments/nginx/${NGINX_CONF_FILE:-nginx.conf}:/etc/nginx/nginx.conf:ro
+      - ./deployments/nginx/certs:/etc/nginx/certs:ro
+      # - ./deployments/nginx/.htpasswd:/etc/nginx/.htpasswd:ro
+      # - ./deployments/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      # Vérifier que chaque service est bien OK sur le port correspondant
+      api: { condition: service_healthy }
+      mlflow: { condition: service_healthy }
+      airflow-webserver: { condition: service_healthy }
+      airflow-flower: { condition: service_healthy }
+    # Redémarrage si le service s'arrête (pour le mode Local=sur une machine (Docker Compose classique))
+    restart: always
+
+networks:
+  mlflow-net:
+    # Docker attribue un sous réseau local ex:172.1X.0.0/16
+    # Switch wirtuel: ex: IP 172.1X.a.b peut communiquer avec IP 172.1X.y.z
+    # Passerelle (pont virtuel): Si IP 172.1X.a.b et IP 172.1Y.c.d déclaré dans un même service, pont créé
+    # Pont physique: 172.1X peut communiquer l'extérieur (internet). Le NAT (Network Address Translation) géré par le driver bridge.
+    driver: bridge
+    # Ce nom donné par défaut mais en l'explicitant, on enlève le doute et on justifie le nom
+    name: ${PROJECT_NAME}_mlflow-net
+  api-net:
+    driver: bridge
+    name: ${PROJECT_NAME}_api-net
+  airflow-net:
+    driver: bridge
+    name: ${PROJECT_NAME}_airflow-net
+
+# Création de volumes (essentiellement des databases) gérés par Docker
+# Associe vitesse et droit d'écriture, sécurité afin de garantir l'intégrité de la db
+volumes:
+  postgres-db-volume:
+  mlflow-artifacts-volume:
+  redis-data-volume:

@@ -1,0 +1,144 @@
+{# 
+  CONTEXTE JINJA2 :
+  - request  : [Système] Requis par FastAPI pour le rendu du template.
+  - features : [Data] Liste des colonnes du modèle (ex: age, sexe...).
+  - labels   : [UI] Noms lisibles à afficher au-dessus des champs.
+  - samples  : [Data] Valeurs par défaut pour pré-remplir le formulaire.
+  - choices  : [Data] Dictionnaire pour générer les menus <select>.
+#}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prédiction d'accident</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        .row { display: flex; flex-wrap: wrap; gap: 10px; }
+        .field { display: flex; flex-direction: column; margin-bottom: 8px; }
+        select, input { width: 180px; padding: 5px; }
+        button { padding: 10px 20px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>Prédiction d'accident</h1>
+    <div class="row">
+        {% for feat in features %}
+        {# on sauvegarde loop.index0 qui est l'itération courante #}
+        {% set outer_loop_index = loop.index0 %}
+        <div class="field">
+            <label>{{ labels[outer_loop_index] }}</label>
+            {% if feat in choices %}
+                <select id="{{ feat }}_select" data-feature="{{ feat }}">
+                    {% for code, lib in choices[feat].items() %}
+                        {# xxx|float transforme la valeur ou le nombre écrit en text en flottant #}
+                        {# selected remplace {% if to_select %}selected{% endif %} si c'est vrai #}
+                        {# on a par exemple <option value=place selected> si c'est vrai sinon <option value=place> #}
+                        {% set to_select = ((samples[outer_loop_index]|float) == (code|float)) %}
+                        <option value="{{ code }}" {% if to_select %}selected{% endif %}>
+                            {{ lib }}
+                        </option>
+                    {% endfor %}
+                </select>
+            {% else %}
+                <input id="{{ feat }}" type="number" step="any" value="{{ samples[outer_loop_index] }}">
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <button onclick="predict()">Prédire</button>
+    <div id="result"></div>
+
+    <script>
+        const FIELDS = {{ features|tojson }}; // J2 transforme ta liste Python en Array JS automatiquement !
+
+        async function predict() {
+            const payload = {};
+            FIELDS.forEach(feat => {
+                const el = document.getElementById(`${feat}_select`) || document.getElementById(feat);
+                payload[feat] = el.value === "" ? null : Number(el.value);
+            });
+
+            // const r = await fetch("/predict", {
+            // {{ url_for('predict') }}: root_path non défini (dans ./src/api/main.py) il retourne //predict
+            // {{ url_for('predict') }}: avec root_path="/api" il retourne /api/predict
+            const r = await fetch("{{ url_for('predict') }}", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            
+            const data = await r.json();
+            const resDiv = document.getElementById("result");
+            
+            if (data.prediction === 1) {
+                resDiv.innerHTML = "<h2 style='color: red;'>🚨 ACCIDENT PRIORITAIRE</h2>";
+            } else {
+                resDiv.innerHTML = "<h2 style='color: green;'>✅ ACCIDENT NON PRIORITAIRE</h2>";
+            }
+
+            if (data.probabilities) {
+                const pGrave = (data.probabilities[1] * 100).toFixed(1);
+                const pBenin = (data.probabilities[0] * 100).toFixed(1);
+                resDiv.innerHTML += `📊 ANALYSE DES RISQUES :<br>• Risque Grave : ${pGrave}%<br>• Risque Bénin : ${pBenin}%`;
+            }
+        }
+    </script>
+
+    <!-- Section mise à jour du modèle -->
+    <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #ddd;">
+        <button id="update-btn" class="btn btn-secondary" onclick="updateModel()">
+            🔄 Mettre à jour le modèle
+        </button>
+    
+        <div id="model-info" style="margin-top: 10px; font-size: 0.9em; color: #555;">
+            Version actuelle : <span id="model-version">Aucun modèle (Lancer le DAG Airflow)</span>
+            <span id="update-status" style="margin-left: 15px; font-style: italic;"></span>
+        </div>
+    </div>
+
+    <script>
+    function updateModel() {
+        const btn = document.getElementById('update-btn');
+        const status = document.getElementById('update-status');
+        const versionSpan = document.getElementById('model-version');
+    
+        btn.disabled = true;
+        status.innerText = "Vérification en cours...";
+
+        // point d'entrée dans src/api/main.py
+        fetch("{{ url_for('update_model_version') }}", {method: 'POST'})
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Erreur HTTP: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            const newVersion = data.version; 
+            const oldVersion = versionSpan.innerText;
+
+            versionSpan.innerHTML = `<strong>${newVersion}</strong>`;
+
+            if (data.status === "success") {
+                status.innerHTML = `✅ ${data.message}`;
+                status.style.color = "green";
+            } else if (data.status === "no_change") {
+                status.innerHTML = `ℹ️ ${data.message}`;
+                status.style.color = "gray";
+            }
+    
+            btn.disabled = false;
+        })
+        .catch(error => {
+            console.error("Erreur détaillée:", error);
+            status.innerText = "❌ Erreur lors de la mise à jour.";
+            status.style.color = "red";
+            btn.disabled = false;
+        });
+    }
+    </script>
+
+</body>
+</html>

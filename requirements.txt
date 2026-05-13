@@ -1,0 +1,51 @@
+# requirements.txt (version ed01) à la racine Template_MLOps_accidents
+
+# local package
+# le . pour dire de regarder dans le répertoire courant
+# le -e (--editable): installe le dossier comme si c'était une bibliothèque
+# Avantage : permet d'utiliser 'import src' partout sans manipuler sys.path
+# from src.data.evaluate_model import evaluate
+-e .
+
+# external requirements
+click
+Sphinx
+# Même si Sphinx importe déjà jinja2,
+# il est présent pour indiquer qu'on l'utilise explicitement dans src
+jinja2
+coverage
+#awscli>=1.29.0
+pandas
+numpy
+scikit-learn
+imbalanced-learn
+joblib
+requests
+# # Outils de développement et CI
+dvc
+dvc-s3
+black
+flake8
+pytest
+# ci-dessous déjà présent dans python 3.12
+# logging
+# sys
+# json
+# pathlib
+# fastapi et uvicorn pour le service
+fastapi
+uvicorn
+mlflow
+# Pour mlflow avec postgres
+psycopg2-binary
+# Airflow
+apache-airflow==2.10.5
+# Les versions plus récentes ne supportent plus le chemin
+# from airflow.providers.postgres.operators.postgres import PostgresOperator
+# qui est remplacé par from airflow.providers.common.sql.operators.sql import SQLExecuteQueryOperator
+# Cela va impacter la déclaration dans les dags et l'utilisation de SQLExecuteQueryOperator et non plus de PostgresOperator
+# La parti commune aux 2 versions est: .venv/lib/python3.12/site-packages/airflow/providers/ et ensuite on part sur postgres ou common
+apache-airflow-providers-postgres
+apache-airflow-providers-docker
+# Sinon l'image apache/airflow:2.10.5-python3.12 mais la version qu'elle veut et ça fait planter le dag dès le début
+"redis<5.0.0"
