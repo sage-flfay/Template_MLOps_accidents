@@ -1,14 +1,17 @@
 # import os
-# import joblib
+import joblib
 import pandas as pd
+import time
 
 # from pathlib import Path
 from fastapi import FastAPI, Request
+from fastapi import Response
 
-# from fastapi.responses import JSONResponse, HTMLResponse
+
+from fastapi.responses import JSONResponse, HTMLResponse
 
 # os et from pathlib import Path seulement utilisés dans config.py
-# from src.api.config import MODEL_PATH, FEATURES
+from src.api.config import MODEL_PATH, FEATURES
 
 # FEATURES, FEATURE_LABELS, CHOICES, SAMPLE utilisés dans templates.py
 # from src.api.TemplateInterfaceWeb import HTML
@@ -17,7 +20,7 @@ from fastapi.responses import JSONResponse
 from fastapi.templating import Jinja2Templates
 
 # On importe toutes les infos de config pour les donner au HTML
-# from src.api.config import MODEL_PATH, FEATURES, FEATURE_LABELS, CHOICES, SAMPLE
+from src.api.config import MODEL_PATH, FEATURES, FEATURE_LABELS, CHOICES, SAMPLE
 from src.api.config import FEATURES, FEATURE_LABELS, CHOICES, SAMPLE
 
 # Découper l’application en microservices et concevoir une orchestration simple
@@ -25,6 +28,9 @@ from src.api.config import FEATURES, FEATURE_LABELS, CHOICES, SAMPLE
 import mlflow.sklearn
 import os
 from pydantic import create_model
+
+from prometheus_client import generate_latest
+from prometheus_client import Counter, Histogram, Gauge, generate_latest
 
 # app = FastAPI(title="Accident ML API")
 # -----------------------------------------------------------------------------
@@ -38,6 +44,21 @@ from pydantic import create_model
 # Cela permet de simplifier le nginx.conf à un seul bloc 'location /api/'.
 # -----------------------------------------------------------------------------
 app = FastAPI(title="Accident ML API", root_path="/api")
+
+PREDICTION_COUNT = Counter(
+    "accident_predictions_total",
+    "Nombre total de prédictions effectuées"
+)
+
+PREDICTION_LATENCY = Histogram(
+    "accident_prediction_latency_seconds",
+    "Temps de réponse des prédictions en secondes"
+)
+
+MODEL_VERSION = Gauge(
+    "accident_model_version",
+    "Version du modèle en production"
+)
 
 # Découper l’application en microservices et concevoir une orchestration simple
 # --- CONFIGURATION MLFLOW ---
@@ -60,58 +81,19 @@ MODEL_INFO = {}
 def load_model():
     global MODEL, MODEL_INFO
     try:
-        # Découper l’application en microservices
-        # et concevoir une orchestration simple
-        # Charger l'alias spécifique "the_best"
-        model_uri = f"models:/{MODEL_NAME}@{MODEL_ALIAS}"
-        print(f"🚀 Chargement du modèle : {model_uri}")
-        # MODEL = mlflow.pyfunc.load_model(model_uri)
-        MODEL = mlflow.sklearn.load_model(model_uri)
+        print(f"Chargement du modèle local : {MODEL_PATH}")
+        MODEL = joblib.load(MODEL_PATH)
         MODEL_INFO = {
             "loaded": True,
-            "source": f"MLflow Alias: {MODEL_ALIAS}",
+            "source": "Local joblib",
+            "path": str(MODEL_PATH),
             "has_proba": hasattr(MODEL, "predict_proba"),
-            # "uri": model_uri
         }
-        # print(f"✅ Succès : Modèle chargé avec l'alias '{MODEL_ALIAS}'")
-        print(
-            "✅ Modèle Sklearn chargé avec succès. "
-            f"Proba disponibles: {MODEL_INFO['has_proba']}"
-        )
-        # MODEL = joblib.load(MODEL_PATH)
-        # MODEL_INFO = {"loaded": True, "model": str(type(MODEL)), "path": MODEL_PATH}
-    # except Exception as e:
-    #     MODEL_INFO = {"loaded": False, "error": str(e)}
-    except Exception as e_alias:
-        print(f"⚠️ LAlias '{MODEL_ALIAS}' NON trouvé. Tentative avec 'latest'...")
-        try:
-            # Fallback sur la toute dernière version enregistrée
-            fallback_uri = f"models:/{MODEL_NAME}/latest"
-            # MODEL = mlflow.pyfunc.load_model(fallback_uri)
-            MODEL = mlflow.sklearn.load_model(fallback_uri)
-            MODEL_INFO = {
-                "loaded": True,
-                "source": "MLflow Latest",
-                "has_proba": hasattr(MODEL, "predict_proba"),
-                # "uri": fallback_uri
-            }
-            # print(f"✅ Succès : Modèle chargé via 'latest'")
-            print(
-                "✅ Modèle Sklearn chargé via 'latest'. "
-                f"Proba disponibles: {MODEL_INFO['has_proba']}"
-            )
-
-        except Exception as e_latest:
-            # Échec total
-            MODEL_INFO = {
-                "loaded": False,
-                "error": f"Alias fail: {e_alias} | Latest fail: {e_latest}",
-            }
-            print(
-                "❌ ERREUR CRITIQUE : Impossible de charger le modèle ! "
-                f"{MODEL_INFO['error']}"
-            )
-
+        MODEL_VERSION.set(1)
+        print("✅ Modèle local chargé avec succès.")
+    except Exception as e:
+        MODEL_INFO = {"loaded": False, "error": str(e)}
+        print(f"❌ Impossible de charger le modèle local : {e}")
 
 # ------------------------------------------------------------
 # HEALTHCHECK
@@ -120,6 +102,10 @@ def load_model():
 def healthz():
     return MODEL_INFO
 
+
+@app.get("/metrics")
+def metrics():
+    return Response(generate_latest(), media_type="text/plain")
 
 # ------------------------------------------------------------
 # PREDICT (JSON brut)
@@ -189,6 +175,8 @@ AccidentSchema.model_config["json_schema_extra"] = {"examples": [EXAMPLE_DATA]}
 @app.post("/predict")
 # async def predict(request: Request):
 async def predict(data: AccidentSchema):
+    start_time = time.time()
+
     if not MODEL_INFO.get("loaded"):
         return JSONResponse({"error": "model not loaded"}, status_code=500)
 
@@ -228,6 +216,9 @@ async def predict(data: AccidentSchema):
         if hasattr(MODEL, "predict_proba"):
             proba = MODEL.predict_proba(df)[0].tolist()
             result["probabilities"] = proba
+
+        PREDICTION_COUNT.inc()
+        PREDICTION_LATENCY.observe(time.time() - start_time)
 
         return JSONResponse(result)
 

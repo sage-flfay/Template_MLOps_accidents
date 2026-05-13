@@ -140,7 +140,21 @@ Il y a les 4 services et 1 job (train) :
 * Fait dans https://github.com/user/Template_MLOps_accidents/settings/secrets/actions
 * avec les DAGSHUB_ACCESS_KEY_ID et DAGSHUB_SECRET_ACCESS_KEY qui contiennent le code S3 de Dagshub (dans Data)
 
+## Monitoring
 
+### Prometheus
+- Lancer : prometheus.exe --config.file=monitoring/prometheus/prometheus.yml
+- URL : http://localhost:9090
+
+### Grafana
+- URL : http://localhost:3000
+- Importer le dashboard :
+  monitoring/grafana/dashboard_accidents.json
+
+### Métriques exposées
+- accident_predictions_total
+- accident_prediction_latency_seconds
+- accident_model_version
 
 
 Project Name
