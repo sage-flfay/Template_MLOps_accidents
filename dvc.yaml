@@ -1,0 +1,86 @@
+# dvc.yaml (version ed01) à la racine Template_MLOps_accidents
+
+# NB: le "dvc add XXX/YYY.." est implicitement fait dans tous les outs
+# stages, deps, outs sont des mots clés
+
+stages:
+  import:
+    # TRAIN_YEAR est setté dans le fichier params.yaml
+    # Avec ce format, on ne lance rien à partir de la racine <=> cd src/data + run .py + cd à la racine
+    # Inconvénient: pour les imports de fonctions, il faut chercher le chemin absolu et pas très lisible
+    # cmd: uv run python src/data/import_raw_data.py data/raw ${TRAIN_YEAR}
+    # Avec l'option -m et ce format, ON RESTE A LA RACINE. On pointe un module qu'on lance à partir de la racine.
+    # Python comprend qu'il doit chercher le fichier avec l'extension .py
+    # Donc pour les imports de fonction, il suffit de mentionner le chemin à partir de la racine
+    # Gros avantage: comme le chemin à partir de la racine est strictement le même pour ubuntu et docker, ça marche toujours.
+    # ex: on fait tout simplement from src.features.build_features import apply_feature_remapping
+    # cmd: uv run python -m src.data.import_raw_data data/raw ${TRAIN_YEAR}
+    # utiliser uv run est une mauvaise idée car dès la moindre différence détectée par uv, il va se resynchroniser et donc
+    # forcer un retéléchargement (conséquence du no-cache utilisé dans Dockerfile sous la racine, pour avoir une image plus légère)
+    # Donc, l'image a été construite en utilisant uv, ce qui garantie que tout le nécessaire est disponible et cohérent
+    # Et avec le PATH configuré dans le DAG, on a la garantie que la commande python fonctionnera en n'utilisant que les resources de l'image.
+    # simu_raw_data contient tous les csv de 2019 à 2024. C'est un peu l'équivalent du site web.
+    # On fait ainsi car uniquement 2021 fonctionne de façon cohérente avec url simple. Pour les autres, il faut récupérer l'adresse avec identifiant
+    # unique et très long pour chaque fichier- simu_data_web 
+    cmd: python -m src.data.import_raw_data simu_data_web data/raw ${TRAIN_YEAR}
+    params:
+      # A chaque run, DVC lit le fichier params.yaml
+      # - Si la valeur est inchangée, alors tous les stages de ce DVC
+      # sont skippés car les données n'ont pas changé (et donc c'est logique)
+      # - Si la valeur change, alors le stage import est lancé et donc les stages
+      # suivant seront de facto lancés
+      # NB: params.yaml est updaté dans le dag Airflow via la variable TRAIN_YEAR
+      # qu'on définit dans le webserver Airflow via Admin/Variable
+      - TRAIN_YEAR
+    deps:
+      - src/data/import_raw_data.py
+      - simu_data_web
+    outs:
+      - data/raw:
+          # Empêche DVC de vider le dossier à chaque run
+          # Ainsi, on évite de tout retélécharger à chaque run
+          # persist: true
+          # False pour vider systématiquement le data/raw car le src/data/import_raw_data.py
+          # calcule maintenant le modèle sur l'année donnée dans Airflow/Admin/Variable et
+          # l'année précédente si elle existe (cas de la 1ère année de la liste)
+          persist: false
+
+  process:
+    # cmd: uv run python src/data/make_dataset.py data/raw data/preprocessed
+    # cmd: uv run python -m src.data.make_dataset data/raw data/preprocessed
+    cmd: python -m src.data.make_dataset data/raw data/preprocessed
+    deps:
+      - data/raw
+      - src/data/make_dataset.py
+    outs:
+      - data/preprocessed/X_train.csv
+      - data/preprocessed/X_test.csv
+      - data/preprocessed/y_train.csv
+      - data/preprocessed/y_test.csv
+
+  train:
+    # cmd: uv run python src/models/train_model.py data/preprocessed models/model.joblib
+    # cmd: uv run python -m src.models.train_model data/preprocessed models/model.joblib
+    cmd: python -m src.models.train_model data/preprocessed models/model.joblib
+    deps:
+      - data/preprocessed/X_train.csv
+      - data/preprocessed/y_train.csv
+      - src/models/train_model.py
+    outs:
+      - models/model.joblib
+
+  evaluate:
+    # cmd: uv run python src/models/evaluate_model.py models/model.joblib data/preprocessed metrics.json
+    # cmd: uv run python -m src.models.evaluate_model models/model.joblib data/preprocessed metrics.json
+    cmd: python -m src.models.evaluate_model models/model.joblib data/preprocessed reports/metrics.json
+    deps:
+      - models/model.joblib
+      - data/preprocessed/X_test.csv
+      - data/preprocessed/y_test.csv
+      - src/models/evaluate_model.py
+
+    # cache: false ==> ne pas le mettre dans .dvc/cache
+    # On veut le voir dans le github, donc faire git add metrics.json
+    metrics:
+      - reports/metrics.json:
+          cache: false

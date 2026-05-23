@@ -1,0 +1,44 @@
+global:
+  # Fréquence à laquelle Prometheus va scraper les métriques
+  scrape_interval: 5s
+  # Fréquence à laquelle les règles d'alerte sont évaluées
+  evaluation_interval: 5s
+
+
+# en utilisant nginx, en mode HTTPS il y a un pb de certificats
+# Get "https://nginx/api/metrics": tls: failed to verify certificate:
+# x509: certificate is not valid for any names, but wanted to match nginx
+# Comme les containers sont tous dans le même réseau, ils peuvent se
+# contacter directement sans avoir besoin de certificats
+scrape_configs:
+  - job_name: "accident-api"
+    # prometheus demande, via Nginx, à api/metrics de lui fournir les métriques
+    metrics_path: "/api/metrics"
+    static_configs:
+      # Il envoie la requête à nginx (passerelle) sur le port 80
+      # qui est configuré pour tout écouter (listen 80)
+      #- targets: ["nginx:80"]
+      - targets: ["prediction_api:8000"]
+    # A la réception des métriques de api,
+    # il va mettre à jour sa base de données API
+
+  - job_name: "prometheus"
+    # prometheus s'auto-interroge
+    metrics_path: "/prometheus/metrics"
+    static_configs:
+      #- targets: ["nginx:80"]
+      - targets: ["localhost:9090"]
+    # Il reçoit sa propre demande, ce qui lui permet de capturer l'état
+    # de ses performances internes (ex: CPU, Latence,...)
+    # et de mettre à jour sa base de données Santé
+
+  # Métriques système : CPU, RAM, etc.
+  - job_name: 'node-exporter'
+    static_configs:
+      # On utilise également le nom du service Docker
+      - targets: ['node-exporter:9100']
+
+  # Métriques individuelles des conteneurs (CPU, RAM, réseau par conteneur)
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']

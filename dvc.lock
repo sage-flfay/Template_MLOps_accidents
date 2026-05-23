@@ -1,0 +1,97 @@
+schema: '2.0'
+stages:
+  import:
+    cmd: python -m src.data.import_raw_data simu_data_web data/raw 2020
+    deps:
+    - path: simu_data_web
+      hash: md5
+      md5: 54ece2be4720b9ffaf4977456314f499.dir
+      size: 187371577
+      nfiles: 24
+    - path: src/data/import_raw_data.py
+      hash: md5
+      md5: ff619014888469229bfd85ba4a4142d0
+      size: 5651
+    params:
+      params.yaml:
+        TRAIN_YEAR: 2020
+    outs:
+    - path: data/raw
+      hash: md5
+      md5: 7228f299070b634e18c1312dba0a0bf2.dir
+      size: 57255443
+      nfiles: 8
+  process:
+    cmd: python -m src.data.make_dataset data/raw data/preprocessed
+    deps:
+    - path: data/raw
+      hash: md5
+      md5: 7228f299070b634e18c1312dba0a0bf2.dir
+      size: 57255443
+      nfiles: 8
+    - path: src/data/make_dataset.py
+      hash: md5
+      md5: 41796c7363a4f0d9ee4eed7aa51ce118
+      size: 17700
+    outs:
+    - path: data/preprocessed/X_test.csv
+      hash: md5
+      md5: 59912a1c4a991f882664a4ed51d29f88
+      size: 2634306
+    - path: data/preprocessed/X_train.csv
+      hash: md5
+      md5: 9004950a88e3991f1707246d96275850
+      size: 6145484
+    - path: data/preprocessed/y_test.csv
+      hash: md5
+      md5: 1fa9a6ad40a741b1f3f1c90eb626cbe5
+      size: 63957
+    - path: data/preprocessed/y_train.csv
+      hash: md5
+      md5: 2898106d1c37d7b760990d22e02d211d
+      size: 149221
+  train:
+    cmd: python -m src.models.train_model data/preprocessed models/model.joblib
+    deps:
+    - path: data/preprocessed/X_train.csv
+      hash: md5
+      md5: 9004950a88e3991f1707246d96275850
+      size: 6145484
+    - path: data/preprocessed/y_train.csv
+      hash: md5
+      md5: 2898106d1c37d7b760990d22e02d211d
+      size: 149221
+    - path: src/models/train_model.py
+      hash: md5
+      md5: 3a89ed0f991f5501b7524d83496f855e
+      size: 10144
+    outs:
+    - path: models/model.joblib
+      hash: md5
+      md5: cd17770ab6f34bb6013325e26f61394c
+      size: 197628649
+  evaluate:
+    cmd: python -m src.models.evaluate_model models/model.joblib 
+      data/preprocessed reports/metrics.json
+    deps:
+    - path: data/preprocessed/X_test.csv
+      hash: md5
+      md5: 59912a1c4a991f882664a4ed51d29f88
+      size: 2634306
+    - path: data/preprocessed/y_test.csv
+      hash: md5
+      md5: 1fa9a6ad40a741b1f3f1c90eb626cbe5
+      size: 63957
+    - path: models/model.joblib
+      hash: md5
+      md5: cd17770ab6f34bb6013325e26f61394c
+      size: 197628649
+    - path: src/models/evaluate_model.py
+      hash: md5
+      md5: d53c5547b0848ea4e30d4f8c610a2844
+      size: 3852
+    outs:
+    - path: reports/metrics.json
+      hash: md5
+      md5: c829d8d97b55862d70fe821a1b665401
+      size: 406

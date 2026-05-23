@@ -1,0 +1,30 @@
+# Configuration automatique du fournisseur de données (provider) permettant
+# à Grafana de détecter et d'importer les tableaux de bord au format JSON
+# (éviter un import manuel systématique et fastidieux)
+
+
+# Version de l'API de config interne à Grafana (déjà intégrée au logiciel)
+apiVersion: 1
+
+# Liste de fournisseurs de tableaux de bords qu'on définit
+# et que Grafana doit aller chercher
+providers:
+  # Un seul - = 1 seul fournisseur. On décide de l'appeler
+  # "Dashboard Accidents" en cohérene avec le projet
+  - name: 'Dashboard Accidents'
+    orgId: 1
+    # Nom du répertoire dnas le menu Dashboards de Grafana
+    # Contient la liste de tous les dashboards présents
+    # /var/lib/grafana/dashboards
+    folder: 'Accidents'
+    # Fichiers physiques (JSON) à lire
+    type: file
+    # Autorisation (false) de supprimer les dashboard depuis l'interface web
+    disableDeletion: false
+    # Autorisation (true) de modifier les dashboard depuis l'interface web
+    editable: true
+    options:
+      # Chemin absolu du répertoire à scanner à l'intérieur du conteneur
+      # Dans le docker-compose.yml on définit un pont
+      # entre ./monitoring/grafana/dashboards_json (sur la VM) et le container path ci-dessous
+      path: /var/lib/grafana/dashboards
