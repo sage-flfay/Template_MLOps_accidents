@@ -372,6 +372,11 @@ install: ## [INIT] Installation complète du projet
 		echo "ℹ️ dvc.lock contient déjà des données, on ne touche à rien"; \
 	fi
 
+	@# création du répertoire data pour les raw et processes data (csv)
+	@# Besoin de le créer car utilisé dans le dag pour monter le volume associé
+	@# (donc avant le import_raw_data.py qui le crée si absent)
+	@mkdir -p data
+
 	@# création du répertoire pour metrics.json et autres métriques
 	@mkdir -p reports
 
@@ -888,6 +893,12 @@ docker-FullClean-full-build: ## [DEV] Reset TOTAL (Volumes/Images/Cache) ET NETT
 	@mkdir -p models
 	@touch models/.gitkeep
 
+	@# Vérification / Création du répertoire data au cas où suppression par inadvertance
+	@# Création du répertoire data pour les raw et processes data (csv)
+	@# Besoin de le créer car utilisé dans le dag pour monter le volume associé
+	@# (donc avant le import_raw_data.py qui le crée si absent)
+	@mkdir -p data
+
 	@echo "🔥 Reconstruction totale de zéro..."
 	@echo "⏳ Cela peut prendre plusieurs dizaines de secondes"
 	@echo "Fichier de logs stocké dans logs/build.log (à partir de la racine)"
@@ -1319,6 +1330,7 @@ docker-full-start-WoInitialTrain_fast: ## [PROD][DOCKER] Démarrage simultannés
 	@# Au cas où l'install n'a pas été exécuté
 	@mkdir -p reports
 	@mkdir -p logs
+	@mkdir -p data
 	@# On crée le fichier s'il n'existe pas
 	@touch dvc.lock
 	@# Si le fichier est vide (taille 0), on injecte le template minimal
