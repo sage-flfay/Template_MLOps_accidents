@@ -40,6 +40,7 @@ COPY src /app/src/
 COPY .dvc/config  /app/.dvc/config
 COPY dvc.yaml     /app/dvc.yaml
 COPY dvc.lock     /app/dvc.lock
+COPY simu_data_web /app/simu_data_web/
 
 RUN mkdir -p /app/data /app/models /app/artifacts
 
@@ -51,5 +52,5 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 CMD ["sh", "-c", \
      "echo \"TRAIN_YEAR: ${TRAIN_YEAR:-2019}\" > params.yaml && \
-      echo '✅ params.yaml généré avec TRAIN_YEAR='${TRAIN_YEAR:-2019} && \      
+      echo 'params.yaml généré avec TRAIN_YEAR='${TRAIN_YEAR:-2019} && \      
       dvc repro -f import"] 
