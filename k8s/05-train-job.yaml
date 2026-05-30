@@ -1,0 +1,73 @@
+# ============================================================
+# Train : Job Kubernetes
+#
+# Équivalent du service "train" (restart: on-failure) du docker-compose.
+# Exécute le pipeline DVC complet :
+#   1. dvc pull  → télécharge data/ depuis DagsHub S3
+#   2. dvc repro → import → process → train
+#
+# DVC lit AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY nativement
+# pour les remotes S3 — pas besoin de .dvc/config.local.
+#
+# Pour réentraîner :
+#   kubectl delete job training-job -n accidents-severity
+#   kubectl apply -f 05-train-job.yaml
+# ============================================================
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: training-job
+  namespace: accidents-severity
+  labels:
+    app: train
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: train
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+        - name: wait-for-mlflow
+          image: localhost:8081/busybox:1.36
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c", "until nc -z mlflow-service 5000; do echo 'Attente MLflow...'; sleep 3; done"]
+      containers:
+        - name: train
+          image: localhost:8081/accidents_severity-train:1.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: MLFLOW_TRACKING_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: MLFLOW_TRACKING_URI
+            - name: UV_LINK_MODE
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: UV_LINK_MODE
+            - name: GIT_PYTHON_REFRESH
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: GIT_PYTHON_REFRESH
+            # DVC reconnaît nativement ces variables pour les remotes S3
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: dagshub-secret
+                  key: DAGSHUB_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dagshub-secret
+                  key: DAGSHUB_SECRET_ACCESS_KEY
+          volumeMounts:
+            - name: artifacts
+              mountPath: /app/artifacts
+      volumes:
+        - name: artifacts
+          persistentVolumeClaim:
+            claimName: mlflow-artifacts-pvc

@@ -1,0 +1,98 @@
+# ============================================================
+# Postgres : StatefulSet + Service
+#
+# Un seul Postgres partagé comme dans docker-compose :
+#   - base "airflow" : utilisée par Airflow
+#   - base "mlflow"  : créée par un initContainer au premier démarrage
+# ============================================================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: accidents-severity
+  labels:
+    app: postgres
+spec:
+  serviceName: postgres-service
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: localhost:8081/postgres:16.13-trixie
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - secretRef:
+                name: postgres-secret
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+            # Script SQL exécuté automatiquement par l'image postgres au 1er démarrage
+            # Crée la base "mlflow" en plus de la base "airflow" définie dans POSTGRES_DB
+            - name: initdb
+              mountPath: /docker-entrypoint-initdb.d
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "airflow"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 10
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "airflow"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+      volumes:
+        - name: initdb
+          configMap:
+            name: postgres-initdb
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 3Gi
+
+---
+# Script SQL : création de la base mlflow au 1er démarrage
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-initdb
+  namespace: accidents-severity
+data:
+  create-mlflow-db.sql: |
+    -- Créé automatiquement au 1er démarrage de Postgres
+    -- Équivalent du "make docker-start" qui crée la base mlflow
+    SELECT 'CREATE DATABASE mlflow'
+    WHERE NOT EXISTS (
+      SELECT FROM pg_database WHERE datname = 'mlflow'
+    )\gexec
+
+---
+# Service Postgres (Headless pour StatefulSet)
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+  namespace: accidents-severity
+  labels:
+    app: postgres
+spec:
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+  clusterIP: None

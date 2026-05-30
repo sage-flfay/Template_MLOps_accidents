@@ -1,0 +1,180 @@
+# ============================================================
+# Airflow : RBAC + Deployment + Service
+#
+# LocalExecutor : pas de Redis, pas de Worker, pas de Flower.
+# Webserver et Scheduler dans le même pod pour économiser les ressources.
+#
+# Équivalent des services docker-compose :
+#   airflow-init + airflow-webserver + airflow-scheduler
+#   (airflow-worker et airflow-flower supprimés car LocalExecutor)
+#
+# La migration db (airflow db migrate) et la création du user admin
+# sont faites dans un initContainer au 1er démarrage.
+# ============================================================
+
+# --- RBAC : le Scheduler doit pouvoir créer des pods dans le namespace ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: airflow-sa
+  namespace: accidents-severity
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: airflow-role
+  namespace: accidents-severity
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: airflow-role-binding
+  namespace: accidents-severity
+subjects:
+  - kind: ServiceAccount
+    name: airflow-sa
+    namespace: accidents-severity
+roleRef:
+  kind: Role
+  apiGroup: rbac.authorization.k8s.io
+  name: airflow-role
+
+---
+# --- Deployment Airflow (webserver + scheduler dans un seul pod) ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: airflow
+  namespace: accidents-severity
+  labels:
+    app: airflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: airflow
+  template:
+    metadata:
+      labels:
+        app: airflow
+    spec:
+      serviceAccountName: airflow-sa
+      initContainers:
+        # 1. Attendre que Postgres soit prêt
+        - name: wait-for-postgres
+          image: localhost:8081/busybox:1.36
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c", "until nc -z postgres-service 5432; do echo 'Attente Postgres...'; sleep 3; done"]
+        # 2. Migration DB + création user admin (équivalent airflow-init du docker-compose)
+        - name: airflow-init
+          image: localhost:8081/accidents_severity-airflow:1.0
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              airflow db migrate && \
+              airflow users create \
+                --username admin \
+                --firstname Admin \
+                --lastname Admin \
+                --role Admin \
+                --email admin@example.com \
+                --password admin || true
+          envFrom:
+            - configMapRef:
+                name: app-config
+          volumeMounts:
+            - name: dags
+              mountPath: /opt/airflow/dags
+            - name: logs
+              mountPath: /opt/airflow/logs
+      containers:
+        # Scheduler dans un conteneur
+        - name: scheduler
+          image: localhost:8081/accidents_severity-airflow:1.0
+          imagePullPolicy: IfNotPresent
+          command: ["airflow", "scheduler"]
+          envFrom:
+            - configMapRef:
+                name: app-config
+          env:
+            - name: MLFLOW_TRACKING_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: MLFLOW_TRACKING_URI
+          volumeMounts:
+            - name: dags
+              mountPath: /opt/airflow/dags
+            - name: logs
+              mountPath: /opt/airflow/logs
+            - name: artifacts
+              mountPath: /app/artifacts
+          livenessProbe:
+            exec:
+              command: ["airflow", "jobs", "check", "--job-type", "SchedulerJob", "--hostname", "$(hostname)"]
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 5
+        # Webserver dans un second conteneur du même pod
+        - name: webserver
+          image: localhost:8081/accidents_severity-airflow:1.0
+          imagePullPolicy: IfNotPresent
+          command: ["airflow", "webserver"]
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: app-config
+          volumeMounts:
+            - name: dags
+              mountPath: /opt/airflow/dags
+            - name: logs
+              mountPath: /opt/airflow/logs
+          readinessProbe:
+            httpGet:
+              path: /airflow/health
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            failureThreshold: 5
+          livenessProbe:
+            httpGet:
+              path: /airflow/health
+              port: 8080
+            initialDelaySeconds: 90
+            periodSeconds: 20
+      volumes:
+        - name: dags
+          persistentVolumeClaim:
+            claimName: airflow-dags-pvc
+        - name: logs
+          emptyDir: {}   # logs éphémères — acceptable pour un exercice
+        - name: artifacts
+          persistentVolumeClaim:
+            claimName: mlflow-artifacts-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: airflow-service
+  namespace: accidents-severity
+  labels:
+    app: airflow
+spec:
+  selector:
+    app: airflow
+  ports:
+    - port: 8080
+      targetPort: 8080

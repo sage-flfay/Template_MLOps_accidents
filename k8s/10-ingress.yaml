@@ -1,0 +1,162 @@
+# ============================================================
+# IngressRoute Traefik (natif k3s)
+#
+# Routes :
+#   /api        → api-service:8000        (FastAPI)
+#   /mlflow     → mlflow-service:5000     (MLflow UI)
+#   /airflow    → airflow-service:8080    (Airflow UI)
+#   /grafana    → grafana-service:3000    (Grafana)
+#   /prometheus → prometheus-service:9090 (Prometheus UI)
+#
+# MLflow : routes supplémentaires pour les chemins absolus
+#   générés par l'UI (/static-files, /ajax-api)
+#
+# Accès :
+#   http://<IP_VM>/api/docs
+#   http://<IP_VM>/mlflow/
+#   http://<IP_VM>/airflow/
+#   http://<IP_VM>/grafana/
+#   http://<IP_VM>/prometheus/
+# ============================================================
+
+# --- Middlewares strip-prefix ---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: strip-api
+  namespace: accidents-severity
+spec:
+  stripPrefix:
+    prefixes: ["/api"]
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: strip-mlflow
+  namespace: accidents-severity
+spec:
+  stripPrefix:
+    prefixes: ["/mlflow"]
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: strip-prometheus
+  namespace: accidents-severity
+spec:
+  stripPrefix:
+    prefixes: ["/prometheus"]
+
+---
+# Airflow et Grafana gèrent leur sous-chemin nativement
+# (AIRFLOW__WEBSERVER__BASE_URL et GF_SERVER_SERVE_FROM_SUB_PATH)
+# → pas de strip-prefix pour eux
+
+# --- IngressRoute HTTP ---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: accidents-severity-http
+  namespace: accidents-severity
+spec:
+  entryPoints:
+    - web
+  routes:
+    # FastAPI
+    - match: PathPrefix(`/api`)
+      kind: Rule
+      middlewares:
+        - name: strip-api
+      services:
+        - name: api-service
+          port: 8000
+
+    # MLflow UI
+    - match: PathPrefix(`/mlflow`)
+      kind: Rule
+      middlewares:
+        - name: strip-mlflow
+      services:
+        - name: mlflow-service
+          port: 5000
+
+    # MLflow : chemins absolus générés par l'UI (pas de strip)
+    - match: PathPrefix(`/static-files`)
+      kind: Rule
+      services:
+        - name: mlflow-service
+          port: 5000
+    - match: PathPrefix(`/ajax-api`)
+      kind: Rule
+      services:
+        - name: mlflow-service
+          port: 5000
+
+    # Airflow (gère /airflow nativement)
+    - match: PathPrefix(`/airflow`)
+      kind: Rule
+      services:
+        - name: airflow-service
+          port: 8080
+
+    # Grafana (gère /grafana nativement)
+    - match: PathPrefix(`/grafana`)
+      kind: Rule
+      services:
+        - name: grafana-service
+          port: 3000
+
+    # Prometheus
+    - match: PathPrefix(`/prometheus`)
+      kind: Rule
+      middlewares:
+        - name: strip-prometheus
+      services:
+        - name: prometheus-service
+          port: 9090
+
+---
+# --- IngressRoute HTTPS — décommenter après création du secret TLS ---
+# Prérequis :
+#   openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+#     -keyout tls.key -out tls.crt -subj "/CN=localhost"
+#   kubectl create secret tls accidents-tls \
+#     --cert=tls.crt --key=tls.key -n accidents-severity
+# ---
+# apiVersion: traefik.io/v1alpha1
+# kind: IngressRoute
+# metadata:
+#   name: accidents-severity-https
+#   namespace: accidents-severity
+# spec:
+#   entryPoints:
+#     - websecure
+#   tls:
+#     secretName: accidents-tls
+#   routes:
+#     - match: PathPrefix(`/api`)
+#       kind: Rule
+#       middlewares: [{name: strip-api}]
+#       services: [{name: api-service, port: 8000}]
+#     - match: PathPrefix(`/mlflow`)
+#       kind: Rule
+#       middlewares: [{name: strip-mlflow}]
+#       services: [{name: mlflow-service, port: 5000}]
+#     - match: PathPrefix(`/static-files`)
+#       kind: Rule
+#       services: [{name: mlflow-service, port: 5000}]
+#     - match: PathPrefix(`/ajax-api`)
+#       kind: Rule
+#       services: [{name: mlflow-service, port: 5000}]
+#     - match: PathPrefix(`/airflow`)
+#       kind: Rule
+#       services: [{name: airflow-service, port: 8080}]
+#     - match: PathPrefix(`/grafana`)
+#       kind: Rule
+#       services: [{name: grafana-service, port: 3000}]
+#     - match: PathPrefix(`/prometheus`)
+#       kind: Rule
+#       middlewares: [{name: strip-prometheus}]
+#       services: [{name: prometheus-service, port: 9090}]

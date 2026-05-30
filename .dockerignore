@@ -38,7 +38,7 @@ mlflow_artifacts/
 params.yaml
 # le yaml doit être présent
 # dvc.yaml
-dvc.lock
+#dvc.lock
 .dvcignore
 # On exclut tout le répertoire .dvc
 .dvc/

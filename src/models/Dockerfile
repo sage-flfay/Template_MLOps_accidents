@@ -37,9 +37,16 @@ RUN uv sync --frozen --no-cache --no-install-project
 # Copier TOUS, SAUF ce qui est indiqué dans le .dockerignore (filtre) vers /app/..
 # src préférable à src/models en cas de fonctions partagées
 COPY src /app/src/
+COPY .dvc/config  /app/.dvc/config
+COPY dvc.yaml     /app/dvc.yaml
+COPY dvc.lock     /app/dvc.lock
+
+RUN mkdir -p /app/data /app/models /app/artifacts
 
 # Ajouter le chemin de l'environnement virtuel créé par uv au PATH
 ENV PATH="/app/.venv/bin:$PATH"
 
 # Lancer la commande
-CMD ["python", "src/models/train_model.py", "data/preprocessed", "models/model.joblib"]
+#CMD ["python", "src/models/train_model.py", "data/preprocessed", "models/model.joblib"]
+
+CMD ["sh", "-c", "dvc pull && dvc repro -f"]
