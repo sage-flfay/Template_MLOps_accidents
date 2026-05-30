@@ -49,4 +49,8 @@ ENV PATH="/app/.venv/bin:$PATH"
 # Lancer la commande
 #CMD ["python", "src/models/train_model.py", "data/preprocessed", "models/model.joblib"]
 
-CMD ["sh", "-c", "dvc pull && dvc repro -f"]
+CMD ["sh", "-c", \
+     "echo \"TRAIN_YEAR: ${TRAIN_YEAR:-2019}\" > params.yaml && \
+      echo '✅ params.yaml généré avec TRAIN_YEAR='${TRAIN_YEAR:-2019} && \
+      dvc pull && \
+      dvc repro -f"]

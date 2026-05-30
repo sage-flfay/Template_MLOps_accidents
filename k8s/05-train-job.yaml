@@ -53,6 +53,13 @@ spec:
                 configMapKeyRef:
                   name: app-config
                   key: GIT_PYTHON_REFRESH
+            # TRAIN_YEAR : équivalent du "echo 'TRAIN_YEAR: 2019' > params.yaml" du Makefile
+            # DVC lit params.yaml pour la variable TRAIN_YEAR utilisée dans dvc.yaml (stage import)
+            - name: TRAIN_YEAR
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: TRAIN_YEAR
             # DVC reconnaît nativement ces variables pour les remotes S3
             - name: AWS_ACCESS_KEY_ID
               valueFrom:
