@@ -31,7 +31,7 @@ Dockerfile
 # --- Ne pas générer inutilement une image à chaque nouvelles données 
 data/
 mlruns/
-simu_data_web/
+#simu_data_web/ j'en ai besoin pour mon image dans k8s, un volume est pas requis
 mlflow_artifacts/
 
 # --- DVC PIPELINES (On garde les .dvc mais on exclut le reste) ---
