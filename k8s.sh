@@ -11,7 +11,10 @@ require_env DAGSHUB_SECRET_ACCESS_KEY
 
 
 #installer Kubernetes
-curl -sfL https://get.k3s.io | sh -s - --write-kubeconfig-mode 644
+#curl -sfL https://get.k3s.io | sh -s - --write-kubeconfig-mode 644
+
+# Installer k3s v1.28 qui supporte encore cgroup v1 pour Ubuntu 20.04.2 LTS (Focal Fossa)
+curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="v1.28.15+k3s1" sh -s - --write-kubeconfig-mode 644
 
 #Pour un mode test, on va utiliser un registry local pour les images Docker
 docker run -d --name registry --restart always -p 8081:5000 registry:2
@@ -50,7 +53,7 @@ kubectl create namespace accidents-severity
 # Injecter dans Kubernetes
 kubectl create secret tls accidents-tls-secret --cert=tls.crt --key=tls.key -n accidents-severity
 
-kubectl create secret generic dagshub-secret --from-literal=DAGSHUB_ACCESS_KEY_ID=<votre_key_id> --from-literal=DAGSHUB_SECRET_ACCESS_KEY=<votre_secret_key> --from-literal=DAGSHUB_USER=sage-flfay  -n accidents-severity
+kubectl create secret generic dagshub-secret --from-literal=DAGSHUB_ACCESS_KEY_ID=$DAGSHUB_ACCESS_KEY_ID --from-literal=DAGSHUB_SECRET_ACCESS_KEY=$DAGSHUB_SECRET_ACCESS_KEY --from-literal=DAGSHUB_USER=sage-flfay  -n accidents-severity
 
 #lancer!
 kubectl apply -k k8s/
