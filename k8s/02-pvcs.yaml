@@ -71,3 +71,60 @@ spec:
   resources:
     requests:
       storage: 1Gi
+
+---
+# data/ : données raw et preprocessed (partagé entre tous les pods de tâches)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data-pvc
+  namespace: accidents-severity
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 2Gi
+
+---
+# reports/ : métriques JSON
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: reports-pvc
+  namespace: accidents-severity
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 500Mi
+
+---
+# models/ : fichiers .joblib
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: models-pvc
+  namespace: accidents-severity
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+# dvc-state/ : .dvc/ config + dvc.lock + params.yaml partagés entre pods de tâches
+# Équivalent des bind mounts .dvc/ dvc.lock params.yaml du docker-compose
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dvc-state-pvc
+  namespace: accidents-severity
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 500Mi

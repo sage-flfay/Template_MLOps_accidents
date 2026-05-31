@@ -4,15 +4,14 @@
 # LocalExecutor : pas de Redis, pas de Worker, pas de Flower.
 # Webserver et Scheduler dans le même pod pour économiser les ressources.
 #
-# Équivalent des services docker-compose :
-#   airflow-init + airflow-webserver + airflow-scheduler
-#   (airflow-worker et airflow-flower supprimés car LocalExecutor)
-#
-# La migration db (airflow db migrate) et la création du user admin
-# sont faites dans un initContainer au 1er démarrage.
+# L'initContainer airflow-init gère automatiquement :
+#   - airflow db migrate
+#   - création user admin
+#   - connexion postgres_default (plus besoin de le faire dans l'UI)
+#   - variable TRAIN_YEAR=2019   (plus besoin de le faire dans l'UI)
 # ============================================================
 
-# --- RBAC : le Scheduler doit pouvoir créer des pods dans le namespace ---
+# --- RBAC ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -49,7 +48,6 @@ roleRef:
   name: airflow-role
 
 ---
-# --- Deployment Airflow (webserver + scheduler dans un seul pod) ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -69,12 +67,13 @@ spec:
     spec:
       serviceAccountName: airflow-sa
       initContainers:
-        # 1. Attendre que Postgres soit prêt
+        # 1. Attendre Postgres
         - name: wait-for-postgres
           image: localhost:8081/busybox:1.36
           imagePullPolicy: IfNotPresent
           command: ["sh", "-c", "until nc -z postgres-service 5432; do echo 'Attente Postgres...'; sleep 3; done"]
-        # 2. Migration DB + création user admin (équivalent airflow-init du docker-compose)
+
+        # 2. Init complet Airflow — tout automatisé, aucune action manuelle requise
         - name: airflow-init
           image: localhost:8081/accidents_severity-airflow:1.0
           imagePullPolicy: IfNotPresent
@@ -82,7 +81,10 @@ spec:
             - sh
             - -c
             - |
-              airflow db migrate && \
+              # --- Migration base de données ---
+              airflow db migrate
+
+              # --- User admin (|| true : pas d'erreur si déjà existant) ---
               airflow users create \
                 --username admin \
                 --firstname Admin \
@@ -90,6 +92,24 @@ spec:
                 --role Admin \
                 --email admin@example.com \
                 --password admin || true
+
+              # --- Connexion Postgres ---
+              # Équivalent manuel : Airflow UI > Admin > Connections > postgres_default
+              # conn-uri format : postgresql://user:password@host:port/schema
+              airflow connections add postgres_default \
+                --conn-type postgres \
+                --conn-host postgres-service \
+                --conn-schema airflow \
+                --conn-login airflow \
+                --conn-password airflow \
+                --conn-port 5432 || true
+
+              # --- Variable TRAIN_YEAR ---
+              # Équivalent manuel : Airflow UI > Admin > Variables > TRAIN_YEAR
+              # Équivalent Makefile : docker compose run airflow-worker airflow variables set TRAIN_YEAR 2019
+              airflow variables set TRAIN_YEAR 2019 || true
+
+              echo "Airflow initialisé (DB + user + connexion Postgres + TRAIN_YEAR)"
           envFrom:
             - configMapRef:
                 name: app-config
@@ -98,8 +118,9 @@ spec:
               mountPath: /opt/airflow/dags
             - name: logs
               mountPath: /opt/airflow/logs
+
       containers:
-        # Scheduler dans un conteneur
+        # Scheduler
         - name: scheduler
           image: localhost:8081/accidents_severity-airflow:1.0
           imagePullPolicy: IfNotPresent
@@ -108,19 +129,25 @@ spec:
             - configMapRef:
                 name: app-config
           env:
-            - name: MLFLOW_TRACKING_URI
+            - name: MLFLOW_TRACKING_URI        
               valueFrom:
                 configMapKeyRef:
                   name: app-config
                   key: MLFLOW_TRACKING_URI
-          volumeMounts:
+            - name: MLFLOW_EXPERIMENT_NAME     
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: MLFLOW_EXPERIMENT_NAME          volumeMounts:
             - name: dags
               mountPath: /opt/airflow/dags
             - name: logs
               mountPath: /opt/airflow/logs
             - name: artifacts
-              mountPath: /app/artifacts          
-        # Webserver dans un second conteneur du même pod
+              mountPath: /app/artifacts
+          
+
+        # Webserver
         - name: webserver
           image: localhost:8081/accidents_severity-airflow:1.0
           imagePullPolicy: IfNotPresent
@@ -148,12 +175,13 @@ spec:
               port: 8080
             initialDelaySeconds: 90
             periodSeconds: 20
+
       volumes:
         - name: dags
           persistentVolumeClaim:
             claimName: airflow-dags-pvc
         - name: logs
-          emptyDir: {}   # logs éphémères — acceptable pour un exercice
+          emptyDir: {}
         - name: artifacts
           persistentVolumeClaim:
             claimName: mlflow-artifacts-pvc

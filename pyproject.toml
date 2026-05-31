@@ -5,8 +5,12 @@ description = "Add your description here"
 requires-python = ">=3.12"
 dependencies = [
     "apache-airflow==2.10.5",
-    "apache-airflow-providers-docker>=4.4.5",
+    # Migration K8s : apache-airflow-providers-docker supprimé
+    # (DockerOperator incompatible avec k3s — remplacé par KubernetesPodOperator)
+    # apache-airflow-providers-docker>=4.4.5
+    "apache-airflow-providers-cncf-kubernetes>=10.4.2",
     "apache-airflow-providers-postgres>=6.4.1",
+    "apache-airflow-providers-common-sql>=1.26.0",
     "black>=26.3.1",
     "click>=8.3.3",
     "coverage>=7.13.5",
@@ -23,7 +27,8 @@ dependencies = [
     "prometheus-client>=0.25.0",
     "psycopg2-binary>=2.9.12",
     "pytest>=9.0.3",
-    "redis<5.0.0",
+    # redis supprimé : inutile avec LocalExecutor (était requis par CeleryExecutor)
+    # "redis<5.0.0",
     "requests>=2.33.1",
     "scikit-learn>=1.8.0",
     "sphinx>=9.1.0",

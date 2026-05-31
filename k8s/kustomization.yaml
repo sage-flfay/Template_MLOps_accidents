@@ -9,7 +9,7 @@ resources:
   - 02-pvcs.yaml
   - 03-postgres.yaml
   - 04-mlflow.yaml
-  - 05-train-job.yaml
+  #- 05-train-job.yaml #uniquemeent à lancer à la main, car lancé par airflow
   - 06-api.yaml
   - 07-airflow.yaml
   - 08-prometheus.yaml
