@@ -119,13 +119,7 @@ spec:
             - name: logs
               mountPath: /opt/airflow/logs
             - name: artifacts
-              mountPath: /app/artifacts
-          livenessProbe:
-            exec:
-              command: ["airflow", "jobs", "check", "--job-type", "SchedulerJob", "--hostname", "$(hostname)"]
-            initialDelaySeconds: 60
-            periodSeconds: 30
-            failureThreshold: 5
+              mountPath: /app/artifacts          
         # Webserver dans un second conteneur du même pod
         - name: webserver
           image: localhost:8081/accidents_severity-airflow:1.0

@@ -8,15 +8,14 @@
 #   /grafana    → grafana-service:3000    (Grafana)
 #   /prometheus → prometheus-service:9090 (Prometheus UI)
 #
-# MLflow : routes supplémentaires pour les chemins absolus
-#   générés par l'UI (/static-files, /ajax-api)
 #
 # Accès :
 #   http://<IP_VM>/api/docs
-#   http://<IP_VM>/mlflow/
-#   http://<IP_VM>/airflow/
-#   http://<IP_VM>/grafana/
-#   http://<IP_VM>/prometheus/
+#   http://<IP_VM>/api
+#   http://<IP_VM>/mlflow
+#   http://<IP_VM>/airflow
+#   http://<IP_VM>/grafana
+#   http://<IP_VM>/prometheus
 # ============================================================
 
 # --- Middlewares strip-prefix ---
@@ -30,16 +29,7 @@ spec:
     prefixes: ["/api"]
 
 ---
-apiVersion: traefik.io/v1alpha1
-kind: Middleware
-metadata:
-  name: strip-mlflow
-  namespace: accidents-severity
-spec:
-  stripPrefix:
-    prefixes: ["/mlflow"]
 
----
 # Airflow et Grafana gèrent leur sous-chemin nativement
 # (AIRFLOW__WEBSERVER__BASE_URL et GF_SERVER_SERVE_FROM_SUB_PATH)
 # → pas de strip-prefix pour eux
@@ -66,10 +56,7 @@ spec:
 
     # MLflow UI
     - match: PathPrefix(`/mlflow`)
-      kind: Rule
-      middlewares:
-        - name: strip-mlflow
-          namespace: accidents-severity
+      kind: Rule      
       services:
         - name: mlflow-service
           port: 5000    
