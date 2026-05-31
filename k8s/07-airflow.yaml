@@ -138,7 +138,8 @@ spec:
               valueFrom:
                 configMapKeyRef:
                   name: app-config
-                  key: MLFLOW_EXPERIMENT_NAME          volumeMounts:
+                  key: MLFLOW_EXPERIMENT_NAME          
+          volumeMounts:
             - name: dags
               mountPath: /opt/airflow/dags
             - name: logs
