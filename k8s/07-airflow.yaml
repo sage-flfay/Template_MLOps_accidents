@@ -112,12 +112,7 @@ spec:
               echo "Airflow initialisé (DB + user + connexion Postgres + TRAIN_YEAR)"
           envFrom:
             - configMapRef:
-                name: app-config
-          volumeMounts:
-            - name: dags
-              mountPath: /opt/airflow/dags
-            - name: logs
-              mountPath: /opt/airflow/logs
+                name: app-config          
 
       containers:
         # Scheduler
@@ -139,9 +134,7 @@ spec:
                 configMapKeyRef:
                   name: app-config
                   key: MLFLOW_EXPERIMENT_NAME          
-          volumeMounts:
-            - name: dags
-              mountPath: /opt/airflow/dags
+          volumeMounts:            
             - name: logs
               mountPath: /opt/airflow/logs
             - name: artifacts
@@ -158,9 +151,7 @@ spec:
           envFrom:
             - configMapRef:
                 name: app-config
-          volumeMounts:
-            - name: dags
-              mountPath: /opt/airflow/dags
+          volumeMounts:            
             - name: logs
               mountPath: /opt/airflow/logs
           readinessProbe:

@@ -51,6 +51,11 @@ RUN uv export --frozen --output-file uv_lock_format_pour_pip.txt
 RUN uv pip install --no-cache --system -r uv_lock_format_pour_pip.txt
 RUN rm uv_lock_format_pour_pip.txt
 
+RUN pip install \
+    apache-airflow-providers-cncf-kubernetes>=10.4.2 \
+    apache-airflow-providers-postgres>=6.4.1 \
+    apache-airflow-providers-common-sql>=1.26.0
+
 # On repasse en utilisateur airflow (pour écrire dans les sous-répertoires de airflow)
 USER airflow
 
