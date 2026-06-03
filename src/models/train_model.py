@@ -16,6 +16,8 @@ from mlflow.models import infer_signature
 
 # Pour setter l'alias au tout premier run
 from mlflow import MlflowClient
+import mlflow.data
+from mlflow.data.pandas_dataset import PandasDataset
 
 from sklearn import metrics
 import logging
@@ -72,6 +74,15 @@ X_train = pd.read_csv(f"{input_filepath}/X_train.csv")
 X_test = pd.read_csv(f"{input_filepath}/X_test.csv")
 y_train = pd.read_csv(f"{input_filepath}/y_train.csv")
 y_test = pd.read_csv(f"{input_filepath}/y_test.csv")
+
+dataset_y_train = mlflow.data.from_pandas(y_train, source=f"{input_filepath}/y_train.csv")
+dataset_y_test  = mlflow.data.from_pandas(y_test,  source=f"{input_filepath}/y_test.csv")
+
+dataset_x_train = mlflow.data.from_pandas(X_train, source=f"{input_filepath}/X_train.csv")
+dataset_x_test  = mlflow.data.from_pandas(X_test,  source=f"{input_filepath}/X_test.csv")
+  
+
+
 y_train = np.ravel(y_train)
 y_test = np.ravel(y_test)
 
@@ -128,6 +139,12 @@ with mlflow.start_run():
     mlflow.log_metric("f1_macro_avg", report["macro avg"]["f1-score"])
     # Clé standard scikit-learn à utiliser : accuracy
     mlflow.log_metric("accuracy", report["accuracy"])
+    
+    mlflow.log_input(dataset_x_train, "X_train")
+    mlflow.log_input(dataset_y_train, "y_train")
+    mlflow.log_input(dataset_x_test, "X_test")
+    mlflow.log_input(dataset_y_test, "y_test")
+
 
     # Eliminer l'affichage du warning suivant:
     # WARNING mlflow.models.model: Model logged without a signature and input example
