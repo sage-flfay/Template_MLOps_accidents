@@ -1,0 +1,4 @@
+evidently==0.4.16
+pandas
+scikit-learn
+numpy==1.26.4

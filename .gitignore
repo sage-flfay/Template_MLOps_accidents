@@ -115,3 +115,10 @@ mlflow-logrotate.conf
 # Autres
 /mlflow_artifacts/*
 !/models/.gitkeep
+
+# Fichiers TLS générés automatiquement par le script pour le chiffrement HTTPS
+tls.crt
+tls.key
+
+# Fichier LOG généré par le script de déploiement pour suivre les étapes du déploiement
+deploiement.logdata_drift_report.html

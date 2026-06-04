@@ -37,7 +37,8 @@ WORKDIR /app
 # Copie des fichiers de dépendances avec les droits user et groupe airflowvers
 COPY --chown=airflow:0 pyproject.toml uv.lock /app/
 # Copie de src car les dags peuvent faire appels aux codes sources
-COPY --chown=airflow:airflow src /app/src/
+#COPY --chown=airflow:airflow src /app/src/
+COPY --chown=airflow:0 src /app/src/
 
 # Environnement Airflow existe déjà dans l'image officielle
 # On AJOUTE les dépendances du projet via pip install
@@ -51,17 +52,18 @@ RUN uv export --frozen --output-file uv_lock_format_pour_pip.txt
 RUN uv pip install --no-cache --system -r uv_lock_format_pour_pip.txt
 RUN rm uv_lock_format_pour_pip.txt
 
-RUN pip install \
-    apache-airflow-providers-cncf-kubernetes>=10.4.2 \
-    apache-airflow-providers-postgres>=6.4.1 \
-    apache-airflow-providers-common-sql>=1.26.0
+#RUN pip install \
+#    apache-airflow-providers-cncf-kubernetes>=10.4.2 \
+#    apache-airflow-providers-postgres>=6.4.1 \
+#    apache-airflow-providers-common-sql>=1.26.0
 
 # On repasse en utilisateur airflow (pour écrire dans les sous-répertoires de airflow)
 USER airflow
 
 # Copie des DAGs vers le chemin standard d'Airflow
 # Fait en mode user airflow car spécifique à Airflow
-COPY --chown=airflow:airflow deployments/airflow/dags /opt/airflow/dags
+#COPY --chown=airflow:airflow deployments/airflow/dags /opt/airflow/dags
+COPY --chown=airflow:0 deployments/airflow/dags /opt/airflow/dags
 
 # Pas de CMD ! On laisse l'image Airflow utiliser son propre entrypoint pour lancer 
 # le webserver ou le scheduler selon le service Docker Compose.

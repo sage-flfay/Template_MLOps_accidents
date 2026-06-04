@@ -39,6 +39,9 @@ from fastapi import Response
 # Créer les métriques
 from prometheus_client import Counter, Histogram, Gauge, generate_latest
 
+# Import du log manager pour enregistrer les requêtes de prédiction
+from src.data.log_manager import log_prediction_request
+
 # app = FastAPI(title="Accident ML API")
 # -----------------------------------------------------------------------------
 # CONFIGURATION DU ROOT_PATH
@@ -213,6 +216,13 @@ async def predict(data: AccidentSchema):
     start_time = time.time()
 
     try:
+        # =====================================================================
+        # ENREGISTREMENT DES LOGS POUR EVIDENTLY (MONITORING)
+        # =====================================================================
+        # On convertit l'objet Pydantic 'data' en dictionnaire brut .dict()
+        # et on l'envoie à notre script de sauvegarde.
+        log_prediction_request(data.dict())
+
         # Pydantic a déjà vérifié les données, on convertit en DataFrame
         df = pd.DataFrame([data.dict()])
 
@@ -228,6 +238,28 @@ async def predict(data: AccidentSchema):
 
         print("DEBUG - Colonnes dans l'ordre FEATURES :", df.columns.tolist())
         print("DEBUG - Première ligne envoyée :", df.values[0])
+
+        # =====================================================================
+        # ENREGISTREMENT DANS LE VOLUME PARTAGÉ POUR EVIDENTLY
+        # =====================================================================
+        try:
+            log_path = "/app/data/production_logs.csv"
+            
+            # On prépare une copie du DataFrame d'origine pour les logs
+            log_df = pd.DataFrame([data.dict()])
+            # On ajoute le timestamp actuel requis par Evidently
+            log_df["timestamp"] = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            # Si le fichier n'existe pas, on l'initialise avec l'en-tête (header)
+            if not os.path.exists(log_path):
+                log_df.to_csv(log_path, index=False, mode='w')
+            else:
+                # Sinon, on ajoute la nouvelle ligne à la suite sans réécrire l'en-tête
+                log_df.to_csv(log_path, index=False, mode='a', header=False)
+            print(f"💾 [API] Requête sauvegardée avec succès dans {log_path}")
+        except Exception as log_error:
+            print(f"⚠️ [API] Échec de l'écriture du log de production : {log_error}")
+        # =====================================================================
 
         result = {"prediction": float(prediction)}
 

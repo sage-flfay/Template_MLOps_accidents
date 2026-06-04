@@ -32,6 +32,12 @@ spec:
         - name: api
           image: localhost:8081/accidents_severity-api:1.0
           imagePullPolicy: IfNotPresent
+          # ===================================================================
+          # CORRECTION : On force le lancement de FastAPI à la place de DVC
+          # ===================================================================
+          command: ["uvicorn"]
+          args: ["src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+          # ===================================================================
           ports:
             - containerPort: 8000
           env:
@@ -53,6 +59,8 @@ spec:
           volumeMounts:
             - name: artifacts
               mountPath: /app/artifacts
+            - name: data-storage
+              mountPath: /app/data
           readinessProbe:
             tcpSocket:
               port: 8000
@@ -67,6 +75,9 @@ spec:
         - name: artifacts
           persistentVolumeClaim:
             claimName: mlflow-artifacts-pvc
+        - name: data-storage
+          persistentVolumeClaim:
+            claimName: data-pvc
 
 ---
 apiVersion: v1

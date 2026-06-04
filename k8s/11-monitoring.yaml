@@ -1,0 +1,38 @@
+# ============================================================
+# Evidently AI Monitoring : Deployment
+# ============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: evidently-monitoring
+  namespace: accidents-severity
+  labels:
+    app: evidently-monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: evidently-monitoring
+  template:
+    metadata:
+      labels:
+        app: evidently-monitoring
+    spec:
+      containers:
+        - name: monitor
+          image: localhost:8081/accidents_severity-monitoring:1.0
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            # On monte le dossier data pour lire "production_logs.csv"
+            - name: data-storage
+              mountPath: /app/data
+            # On monte le dossier reports pour y déposer le fichier HTML généré
+            - name: reports-storage
+              mountPath: /app/reports
+      volumes:
+        - name: data-storage
+          persistentVolumeClaim:
+            claimName: data-pvc
+        - name: reports-storage
+          persistentVolumeClaim:
+            claimName: reports-pvc
