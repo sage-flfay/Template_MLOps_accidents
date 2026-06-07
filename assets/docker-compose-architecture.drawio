@@ -1,0 +1,337 @@
+<mxfile host="app.diagrams.net" agent="Claude">
+  <diagram name="MLOps Architecture" id="mlops-docker-compose">
+    <mxGraphModel dx="2246" dy="815" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="yAZ3xBk4n0K4DQ-DpiNL-1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;opacity=20;fontSize=13;fontStyle=1;verticalAlign=top;" value="api-net" vertex="1">
+          <mxGeometry height="335" width="820.5" x="779.5" y="475" as="geometry" />
+        </mxCell>
+        <mxCell id="title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1;fontColor=#1a1a2e;" value="MLOps Docker Architecture" vertex="1">
+          <mxGeometry height="40" width="600" x="527" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_bg" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" value="" vertex="1">
+          <mxGeometry height="200" width="150" x="1500" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontSize=12;fontStyle=1;" value="Légende" vertex="1">
+          <mxGeometry height="20" width="150" x="1504" y="355" as="geometry" />
+        </mxCell>
+        <mxCell id="leg1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="" vertex="1">
+          <mxGeometry height="20" width="20" x="1514" y="385" as="geometry" />
+        </mxCell>
+        <mxCell id="leg1t" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;" value="airflow-net" vertex="1">
+          <mxGeometry height="20" width="110" x="1539" y="385" as="geometry" />
+        </mxCell>
+        <mxCell id="leg2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="" vertex="1">
+          <mxGeometry height="20" width="20" x="1514" y="415" as="geometry" />
+        </mxCell>
+        <mxCell id="leg2t" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;" value="mlflow-net" vertex="1">
+          <mxGeometry height="20" width="110" x="1539" y="415" as="geometry" />
+        </mxCell>
+        <mxCell id="leg3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="" vertex="1">
+          <mxGeometry height="20" width="20" x="1514" y="445" as="geometry" />
+        </mxCell>
+        <mxCell id="leg3t" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;" value="api-net" vertex="1">
+          <mxGeometry height="20" width="110" x="1539" y="445" as="geometry" />
+        </mxCell>
+        <mxCell id="leg4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="" vertex="1">
+          <mxGeometry height="20" width="20" x="1514" y="475" as="geometry" />
+        </mxCell>
+        <mxCell id="leg4t" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;" value="Service éphémère" vertex="1">
+          <mxGeometry height="20" width="110" x="1539" y="475" as="geometry" />
+        </mxCell>
+        <mxCell id="leg5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="" vertex="1">
+          <mxGeometry height="20" width="20" x="1514" y="505" as="geometry" />
+        </mxCell>
+        <mxCell id="leg5t" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=11;" value="Monitoring" vertex="1">
+          <mxGeometry height="20" width="110" x="1539" y="505" as="geometry" />
+        </mxCell>
+        <mxCell id="zone_airflow" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;opacity=20;fontSize=13;fontStyle=1;verticalAlign=top;fontColor=#23395d;" value="airflow-net" vertex="1">
+          <mxGeometry height="640" width="760" x="30" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="zone_mlflow" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;opacity=20;fontSize=13;fontStyle=1;verticalAlign=top;fontColor=#1a3c1f;" value="mlflow-net" vertex="1">
+          <mxGeometry height="400" width="500" x="800" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="nginx" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0a500;strokeColor=#a06800;fontColor=#ffffff;fontSize=11;" value="&lt;b&gt;nginx&lt;/b&gt;&lt;br&gt;nginx_reverse_proxy&lt;br&gt;&lt;br&gt;&lt;div&gt;mlflow /flower /airflow /api /prometheus /grafana /api/version&lt;/div&gt;" vertex="1">
+          <mxGeometry height="95" width="330" x="530" y="625" as="geometry" />
+        </mxCell>
+        <mxCell id="internet" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#16213e;fontColor=#ffffff;fontSize=12;fontStyle=1;" value="🌐 Internet / Client" vertex="1">
+          <mxGeometry height="60" width="170" x="610" y="760" as="geometry" />
+        </mxCell>
+        <mxCell id="e_internet_nginx" edge="1" parent="1" source="internet" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#f0a500;strokeWidth=2;" target="nginx">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="postgres" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;verticalAlign=top;" value="&lt;div&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/div&gt;&lt;b&gt;&lt;div&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;b style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;postgres&lt;/b&gt;&lt;/div&gt;&lt;/b&gt;postgres:16.13-trixie&lt;br&gt;Port: 127.0.0.1:5432&lt;br&gt;DB: airflow + mlflow&lt;br&gt;Volume: postgres-db-volume" vertex="1">
+          <mxGeometry height="115" width="160" x="50" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="redis" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;verticalAlign=top;" value="&lt;div&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/div&gt;&lt;b&gt;&lt;div&gt;&lt;b&gt;&lt;br&gt;&lt;/b&gt;&lt;/div&gt;&lt;div&gt;&lt;b style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;redis&lt;/b&gt;&lt;/div&gt;&lt;/b&gt;Port: 127.0.0.1:6379&lt;div&gt;Volume: redis-data-volume&lt;/div&gt;" vertex="1">
+          <mxGeometry height="90" width="160" x="370" y="390" as="geometry" />
+        </mxCell>
+        <mxCell id="fix_airflow" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;dashed=1;" value="&lt;b&gt;fix-vol-perm-airflow-init&lt;/b&gt;&lt;br&gt;busybox:1.36&lt;br&gt;[éphémère — no network]&lt;div&gt;&lt;br/&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="70" width="170" x="145" y="425" as="geometry" />
+        </mxCell>
+        <mxCell id="airflow_init" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;dashed=1;" value="&lt;b&gt;airflow-init&lt;/b&gt;&lt;br&gt;[éphémère]&lt;br&gt;DB migrate + user create" vertex="1">
+          <mxGeometry height="70" width="120" x="170" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="airflow_webserver" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="&lt;b&gt;airflow-webserver&lt;/b&gt;&lt;br&gt;Port interne: 8080&lt;br&gt;→ /airflow via Nginx" vertex="1">
+          <mxGeometry height="70" width="180" x="160" y="555" as="geometry" />
+        </mxCell>
+        <mxCell id="airflow_scheduler" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="&lt;b&gt;airflow-scheduler&lt;/b&gt;&lt;br&gt;CeleryExecutor" vertex="1">
+          <mxGeometry height="70" width="180" x="260" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="airflow_worker" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="&lt;b&gt;airflow-worker&lt;/b&gt;&lt;br&gt;Celery Worker&lt;br&gt;hostname: airflow-worker" vertex="1">
+          <mxGeometry height="70" width="180" x="470" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="airflow_flower" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" value="&lt;b&gt;airflow-flower&lt;/b&gt;&lt;br&gt;Celery Flower&lt;br&gt;Port interne: 5555&lt;br&gt;→ /flower via Nginx" vertex="1">
+          <mxGeometry height="70" width="180" x="590" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="fix_mlflow" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;dashed=1;" value="&lt;b&gt;fix-vol-perm-mlflow&lt;/b&gt;&lt;br&gt;busybox:1.36&lt;br&gt;[éphémère — no network]&lt;div&gt;&lt;br/&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="70" width="210" x="950" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="mlflow" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" value="&lt;b&gt;mlflow&lt;/b&gt;&lt;br&gt;mlflow_server&lt;br&gt;Port interne: 5000&lt;br&gt;→ /mlflow via Nginx&lt;br&gt;Volume: mlflow-artifacts-volume&lt;br&gt;DB: postgres/mlflow" vertex="1">
+          <mxGeometry height="100" width="200" x="820" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="train" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" value="&lt;b&gt;train&lt;/b&gt;&lt;br&gt;training_service&lt;br&gt;[restart: on-failure]&lt;br&gt;src/ data/ models/ artifacts&lt;br&gt;→ pousse métriques/modèles à MLflow" vertex="1">
+          <mxGeometry height="90" width="210" x="1050" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="api" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" value="&lt;b&gt;api&lt;/b&gt;&lt;br&gt;prediction_api&lt;br&gt;Port interne: 8000&lt;br&gt;→ /api via Nginx&lt;br&gt;replicas: 1&lt;br&gt;lit modèles depuis artifacts" vertex="1">
+          <mxGeometry height="100" width="200" x="810" y="490" as="geometry" />
+        </mxCell>
+        <mxCell id="prometheus" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" value="&lt;b&gt;prometheus&lt;/b&gt;&lt;br&gt;prom/prometheus:v2.51.2&lt;br&gt;Port interne: 9090&lt;br&gt;→ /prometheus via Nginx&lt;br&gt;Volume: prometheus_data" vertex="1">
+          <mxGeometry height="90" width="200" x="1280" y="490" as="geometry" />
+        </mxCell>
+        <mxCell id="grafana" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" value="&lt;b&gt;grafana&lt;/b&gt;&lt;br&gt;grafana/grafana:10.4.2&lt;br&gt;Port interne: 3000&lt;br&gt;→ /grafana via Nginx&lt;br&gt;Volume: grafana_data" vertex="1">
+          <mxGeometry height="90" width="190" x="1040" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="node_exporter" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" value="&lt;b&gt;node-exporter&lt;/b&gt;&lt;br&gt;prom/node-exporter:v1.8.2&lt;br&gt;Port: interne 9100&amp;nbsp;&lt;br&gt;Monitoring hôte" vertex="1">
+          <mxGeometry height="80" width="150" x="1270" y="720" as="geometry" />
+        </mxCell>
+        <mxCell id="cadvisor" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" value="&lt;b&gt;cadvisor&lt;/b&gt;&lt;br&gt;gcr.io/cadvisor:v0.49.1&lt;br&gt;Port:interne 8082&lt;br&gt;Monitoring conteneurs" vertex="1">
+          <mxGeometry height="80" width="151" x="1429" y="720" as="geometry" />
+        </mxCell>
+        <mxCell id="vol_artifacts" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;verticalAlign=top;" value="📦 mlflow-artifacts-volume" vertex="1">
+          <mxGeometry height="70" width="170" x="1429" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="e_nginx_ws" edge="1" parent="1" source="nginx" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#6c8ebf;dashed=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" target="airflow_webserver">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="530" y="665" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_nginx_flower" edge="1" parent="1" source="nginx" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#6c8ebf;" target="airflow_flower">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="680" y="560" />
+              <mxPoint x="680" y="560" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_nginx_mlflow" edge="1" parent="1" source="nginx" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#82b366;" target="mlflow">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="740" y="463" />
+              <mxPoint x="890" y="463" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_nginx_api" edge="1" parent="1" source="nginx" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#d6b656;" target="api">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="910" y="640" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_nginx_prom" edge="1" parent="1" source="nginx" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#9673a6;exitX=1;exitY=0.5;exitDx=0;exitDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="860" y="680" />
+              <mxPoint x="1315" y="680" />
+              <mxPoint x="1315" y="584" />
+            </Array>
+            <mxPoint x="795" y="665" as="sourcePoint" />
+            <mxPoint x="1315" y="580" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_nginx_grafana" edge="1" parent="1" source="nginx" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#9673a6;" target="grafana">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="950" y="660" />
+              <mxPoint x="950" y="610" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_ws_redis" edge="1" parent="1" source="airflow_webserver" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#6c8ebf;dashed=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;entryPerimeter=0;" target="redis">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="450" y="590" />
+            </Array>
+            <mxPoint x="250" y="580" as="sourcePoint" />
+            <mxPoint x="450" y="490" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_ws_pg" edge="1" parent="1" source="airflow_webserver" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#6c8ebf;dashed=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" target="postgres">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="110" y="590" />
+            </Array>
+            <mxPoint x="209.9600000000002" y="588.27" as="sourcePoint" />
+            <mxPoint x="142.7" y="182.5" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_sched_redis" edge="1" parent="1" source="airflow_scheduler" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#6c8ebf;dashed=1;" target="redis">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_worker_redis" edge="1" parent="1" source="airflow_worker" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#6c8ebf;dashed=1;exitX=0.573;exitY=0.971;exitDx=0;exitDy=0;exitPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="573" y="305" />
+              <mxPoint x="480" y="305" />
+            </Array>
+            <mxPoint x="410" y="711.8" as="sourcePoint" />
+            <mxPoint x="480" y="390" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_init_fix" edge="1" parent="1" source="airflow_init" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#b85450;dashed=1;" target="fix_airflow">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_init_pg" edge="1" parent="1" source="airflow_init" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#b85450;dashed=1;" target="postgres">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_mlflow_fix" edge="1" parent="1" source="mlflow" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#b85450;dashed=1;" target="fix_mlflow">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="930" y="330" />
+              <mxPoint x="1055" y="330" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_mlflow_pg" edge="1" parent="1" source="mlflow" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#82b366;dashed=1;" target="postgres">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="630" y="260" />
+              <mxPoint x="630" y="260" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_train_mlflow" edge="1" parent="1" source="train" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#82b366;" target="mlflow">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1040" y="245" />
+              <mxPoint x="1040" y="245" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_api_mlflow" edge="1" parent="1" source="api" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#d6b656;" target="mlflow">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="910" y="370" />
+              <mxPoint x="910" y="370" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_grafana_prom" edge="1" parent="1" source="grafana" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#9673a6;dashed=1;" target="prometheus">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_mlflow_vol" edge="1" parent="1" source="mlflow" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#666666;dashed=1;exitX=0.866;exitY=0.996;exitDx=0;exitDy=0;exitPerimeter=0;" target="vol_artifacts">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="993" y="310" />
+              <mxPoint x="1515" y="310" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_worker_train" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#ff8800;strokeWidth=2;fontColor=#ff8800;fontSize=10;exitX=1;exitY=0.25;exitDx=0;exitDy=0;" value="DockerOperator&lt;br&gt;(docker.sock)">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="650" y="150" />
+              <mxPoint x="1150" y="150" />
+            </Array>
+            <mxPoint x="650" y="177.5" as="sourcePoint" />
+            <mxPoint x="1150" y="200" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_worker_mlflow" edge="1" parent="1" source="airflow_worker" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#82b366;fontSize=10;" target="mlflow" value="métriques/modèles">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="735" y="185" />
+              <mxPoint x="735" y="240" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="0tHegTxpcVSf6u9rJqDf-2" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;entryX=0.216;entryY=-0.015;entryDx=0;entryDy=0;entryPerimeter=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="1460" y="580" as="sourcePoint" />
+            <mxPoint x="1460.04" y="719" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="0tHegTxpcVSf6u9rJqDf-4" connectable="0" parent="0tHegTxpcVSf6u9rJqDf-2" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="req" vertex="1">
+          <mxGeometry relative="1" x="-0.0995" y="-3" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="0tHegTxpcVSf6u9rJqDf-3" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;entryX=0.75;entryY=0;entryDx=0;entryDy=0;" target="node_exporter" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="1383" y="580" as="sourcePoint" />
+            <mxPoint x="1440" y="720" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="0tHegTxpcVSf6u9rJqDf-5" connectable="0" parent="0tHegTxpcVSf6u9rJqDf-3" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="req" vertex="1">
+          <mxGeometry relative="1" x="-0.0872" y="-1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="0tHegTxpcVSf6u9rJqDf-6" edge="1" parent="1" source="prometheus" style="endArrow=classic;html=1;rounded=0;entryX=1;entryY=0.25;entryDx=0;entryDy=0;exitX=0.002;exitY=0.278;exitDx=0;exitDy=0;exitPerimeter=0;" target="api" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="1370" y="316.5" as="sourcePoint" />
+            <mxPoint x="1370" y="463.5" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="0tHegTxpcVSf6u9rJqDf-7" connectable="0" parent="0tHegTxpcVSf6u9rJqDf-6" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="req" vertex="1">
+          <mxGeometry relative="1" x="-0.0872" y="-1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ti7ozs-nk5Mxd5G1wGwK-1" parent="1" style="dashed=0;outlineConnect=0;html=1;align=center;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;shape=mxgraph.webicons.github;gradientColor=#DFDEDE" value="" vertex="1">
+          <mxGeometry height="60" width="60" x="1564" y="215" as="geometry" />
+        </mxCell>
+        <mxCell id="ti7ozs-nk5Mxd5G1wGwK-2" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="DagsHub" vertex="1">
+          <mxGeometry height="30" width="60" x="1564" y="275" as="geometry" />
+        </mxCell>
+        <mxCell id="ti7ozs-nk5Mxd5G1wGwK-3" edge="1" parent="1" source="mlflow" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#666666;dashed=1;" target="ti7ozs-nk5Mxd5G1wGwK-1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="960" y="320" />
+              <mxPoint x="1539" y="320" />
+              <mxPoint x="1539" y="260" />
+            </Array>
+            <mxPoint x="1044" y="320" as="sourcePoint" />
+            <mxPoint x="1539" y="150" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="yAZ3xBk4n0K4DQ-DpiNL-2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" value="&lt;b&gt;monitoring&lt;/b&gt;&lt;br&gt;evidently:1.0&lt;br&gt;Monitoring evidently" vertex="1">
+          <mxGeometry height="80" width="130" x="1130" y="720" as="geometry" />
+        </mxCell>
+        <mxCell id="yAZ3xBk4n0K4DQ-DpiNL-3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" value="&lt;b&gt;evidently_ui&lt;/b&gt;&lt;br&gt;evidently:1.0&lt;div&gt;Port interne 8000&lt;br&gt;Monitoring evidently&lt;/div&gt;" vertex="1">
+          <mxGeometry height="80" width="130" x="990" y="720" as="geometry" />
+        </mxCell>
+        <mxCell id="yAZ3xBk4n0K4DQ-DpiNL-4" edge="1" parent="1" source="nginx" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#9673a6;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="yAZ3xBk4n0K4DQ-DpiNL-3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="950" y="696" />
+              <mxPoint x="950" y="760" />
+            </Array>
+            <mxPoint x="950" y="738" as="sourcePoint" />
+            <mxPoint x="1130" y="660" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="yAZ3xBk4n0K4DQ-DpiNL-5" edge="1" parent="1" source="yAZ3xBk4n0K4DQ-DpiNL-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#9673a6;dashed=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="yAZ3xBk4n0K4DQ-DpiNL-3">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1250" y="650" as="sourcePoint" />
+            <mxPoint x="1300" y="590" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

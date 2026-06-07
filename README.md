@@ -1,430 +1,152 @@
-# STEP 4 - PARTIE Api Mlflow Airflow Prometheus Grafana Evidently + Alarme Drift + Dagshub update pour les nouvelles versions
-### Ubuntu
-VM UBUNTU A UTILISER IMPERATIVEMENT A PARTIR DE Sprint3: AIRFLOW / Airflow avancé - Deux nouveaux opérateurs >
-Faire reinitialiser pour être sûr quelle redémarre de 0
-LA VM a 16GO de RAM et 24GO de disk. Très important car les services consomment beaucoup de RAM
+# MLOps – Accidents Severity Pipeline
 
-#### Récupérer à partir d'une machine vierge
-git clone -b nico_AMAPGE https://github.com/sage-flfay/Template_MLOps_accidents.git
+![Architecture](./assets/docker-compose-architecture.png)
 
-### Makefile
-Taper **`make`** : Affichage de toutes les commandes avec un bref commentaire.
 
-### CONFIGURATION AVANT DE DEMARRER
-1. **DAGSHUB**
-   * Configurer la visibilité à S3: aller dans Settings/Integrations, sélectionner "S3 compatible" pour remplir les champs,
-on prend les infos dans files/data (gros bounton vert) et on descend jusqu'a Setup credentials et on prend le user et le password
-2. **EVIDENTLY**
-   * Pour que l'alarme soit transmise à webhook, aller sur le site https://webhook.site/ ==> il affiche un lien.
-   * Copier ce lien et le mettre dans docker-compose.yml, service grafana, variable GF_WEBHOOK_URL et ainsi grafana sera correctement configuré
+Stack : **API · MLflow · Airflow · Prometheus · Grafana**
 
-### COMMANDE A LANCER:
-1. **`make install`** : Mettre à jour l’env complet. Elle s'arrete car elle demande à renseigner
-   * **Warning** : il demandera les keys de sécurité dagshub. Commande améliorée. Laissez-vous guidé
-   * NB: les key sont dans le DagsHub, Data, à la fin S3 Crédential copier la clé XXX
-   * NB: Lors de la demande, l'affichage des key est masquée (comme pour le token demandé lors d'un push github)
+---
 
-2. **`make install`** : maitenant, toute l'installation va se faire
-3. **`make docker-FullClean-full-build`**
-   * **Suppression des projets** : nettoyage total de tout (donc si plusieurs projets en //, tout est supprimé (pas notre cas))
-   * **Demande Airflow usr/pwd** : par défaut, press enter vide donne admin/admin
-   * **Demande du mode** : mode débug (HTTP) ou mode prod (HTTPS)
-   * **Création des images** : création  de toutes les images nécessaires au projet
-   * **Affichage** : affichage des images générées, des infos ubuntu usage (important pour savoir si assez de resources)
+## Prérequis
 
-4. **`WARNING: LA COMMANDE A CHANGé DE NOM. DEMARRAGE BEAUCOUP PLUS RAPIDE`**
-   **`make docker-full-start-WoInitialTrain_fast`**
-   * **Démarrage de tous les services bcp plus rapide**
-   * **Maintenant la commande docker-reset-for-full-simu est aussi incluse pour un redémarrage complet et cohérent**
-   * **Affichage** : rappel du mode pour accéder aux différents service web, affichage des services et des infos ubuntu usage
-   * **NB** : 2 dags sont présents dans Airflow.
-     * dvc_accidents_severity_WoDvcTrackPush: fait toute la procédure sans faire le hash du modèle et ni le dvc push.
-       * Donc dans le fastapi, le bouton "Mettre à jour le modèle" se fera directement en interne
-     * dvc_accidents_severity: le hash du modèle et le dvc push est fait (NB: l'utilisation de dvc.yaml fait automatiquement le dvc add)
-       * Donc dans le fastapi, le bouton "Mettre à jour le modèle" se fera directement en questionnant le S3 pour récupérer le modèle
+- VM Ubuntu avec **16 Go de RAM** et **24 Go de disque** (les services sont gourmands en ressources).
+- Docker Compose et Buildx à jour (mis à jour automatiquement via `make install`).
 
-5. **`make drift-on`** :
-   * Sauvegarde du fichier d'origine data/users/fastapi_data.csv
-   * Copie du fichier simu_data_drift/fastapi_data_ForDriftAlerterDemo.csv dans data/users/fastapi_data.csv
-   * La copie est importante car elle actualise l'heure. Le fichier est fourni à evidently qui regarde son heure pour savoir s'il n'est pas ancien et donc déjà traité
-   * Le drift doit être détecté et une alarme doit être générée sur prometheus et grafana
+---
 
-6. **`make drift-off`** : revient au fastapi_data.csv d'origine. Il n'y a plus de drift et l'alarme est supprimée
+## Installation
 
-7. **`make docker-reset-for-full-simu`** : Forcer la regénération de tous models via le run du web airflow (inutile la première fois car vierge)
+### Cloner le dépôt
 
-8. **`make docker-status`** : affiche l'état des services et les ports actifs
-
-9. **`make ubuntu_usage`** : vérification de la VM pour RAM, DISK, CPU par service
-
-10. **`INFOS GENERALES`**
-   * **DAGSHUB**
-     * Tab experiment updaté pour chaque version
-   * **S3**
-     * Dans files, aller jusqu'à "Storage buckets" puis cliquer sur s3://dvc et descendre jusqu'aux fichiers pour voir ce qui est stocké
-   * **EVIDENTLY** : Intégration du travail de Julien avec
-     * Ajout des alarmes de drift dans prometheus et grafana avec configuration pour webhook (alarme reçu sur webhook)
-     * Ajout dans le dashboard grafana d'un double panel drift pour le status et le score
-   * **PROMETHEUS** : Intégration du travail de Abdessamed + ajout de endpoint node-exporter pour le dashboard VM usage et cadvisor pour le dashboard des containers
-   * **GRAFANA** : Intégration du travail de Abdessamed + ajout des dashboard (importés) pour VM usage et pour le monitoring des containers
-   * **Modifier la valeur de la key** :
-     * Dans le web airflow, aller dans Admin/Variable. Updater l'année: 2019, 2020, 2021, 2022, 2023, 2024 autorisés
-   * **Temps de génération** : si le modèle n'existe pas, la génération prend de 2 à 3mn.
-     * Si déjà existant, alors autour d'une minute pour juste les verifs
-
-# STEP 4 - PARTIE Api Mlflow Airflow Prometheus Grafana
-### Ubuntu
-VM UBUNTU A UTILISER IMPERATIVEMENT A PARTIR DE Sprint3: AIRFLOW / Airflow avancé - Deux nouveaux opérateurs >
-Faire reinitialiser pour être sûr quelle redémarre de 0
-LA VM a 16GO de RAM et 24GO de disk. Très important car les services consomment beaucoup de RAM
-
-#### Récupérer à partir d'une machine vierge
+```bash
 git clone -b nico_AMAPG https://github.com/sage-flfay/Template_MLOps_accidents.git
+```
 
-### Makefile
-Taper **`make`** : Affichage de toutes les commandes avec un bref commentaire.
+### Commandes disponibles
 
-### COMMANDE A LANCER:
-1. **`make install`** : Mettre à jour l’env complet. Elle s'arrete car elle demande à renseigner
-   * **Warning** : il demandera les keys de sécurité dagshub. Commande améliorée. Laissez-vous guidé
-   * NB: les key sont dans le DagsHub, Data, à la fin S3 Crédential copier la clé XXX
-   * NB: Lors de la demande, l'affichage des key est masquée (comme pour le token demandé lors d'un push github)
-
-2. **`make install`** : maitenant, toute l'installation va se faire
-3. **`make docker-FullClean-full-build`**
-   * **Suppression des projets** : nettoyage total de tout (donc si plusieurs projets en //, tout est supprimé (pas notre cas))
-   * **Demande Airflow usr/pwd** : par défaut, press enter vide donne admin/admin
-   * **Demande du mode** : mode débug (HTTP) ou mode prod (HTTPS)
-   * **Création des images** : création  de toutes les images nécessaires au projet
-   * **Affichage** : affichage des images générées, des infos ubuntu usage (important pour savoir si assez de resources)
-
-4. **`WARNING: LA COMMANDE A CHANGé DE NOM. DEMARRAGE BEAUCOUP PLUS RAPIDE`**
-   **`make docker-full-start-WoInitialTrain_fast`**
-   * **Démarrage de tous les services bcp plus rapide**
-   * **Maintenant la commande docker-reset-for-full-simu est aussi incluse pour un redémarrage complet et cohérent**
-   * **Affichage** : rappel du mode pour accéder aux différents service web, affichage des services et des infos ubuntu usage
-
-5. **`make docker-reset-for-full-simu`** : Forcer la regénération de tous models via le run du web airflow (inutile la première fois car vierge)
-
-6. **`make docker-status`** : affiche l'état des services et les ports actifs
-
-7. **`make ubuntu_usage`** : vérification de la VM pour RAM, DISK, CPU par service
-
-8. **`INFOS GENERALES`**
-   * **PROMETHEUS** : Intégration du travail de Abdessamed + ajout de endpoint node-exporter pour le dashboard VM usage et cadvisor pour le dashboard des containers
-   * **GRAFANA** : Intégration du travail de Abdessamed + ajout des dashboard (importés) pour VM usage et pour le monitoring des containers
-   * **Modifier la valeur de la key** :
-     * Dans le web airflow, aller dans Admin/Variable. Updater l'année: 2019, 2020, 2021, 2022, 2023, 2024 autorisés
-   * **Temps de génération** : si le modèle n'existe pas, la génération prend environ 1.30 à 2mn. Si déjà existant, alors moins d'une minute pour juste les verifs
-
-9. **`REST A FAIRE`**
-   * **EVIDENTLY** : en attente de Julien
-   * **GRAFANA** : ajout du dashboard lié à evidently
-   * **MLFLOW** :
-     * Airflow: actuellement, échange du modèle .pkl fait via le volume (/app/artifacts). Le faire via HTTP pour une meilleure isolation des services. J'y travaille
-     * Stockage du modèle : actuellement, le modèle .pkl reste dans le mlflow. Le stocker dans le dagshub. J'y travaille
-     * API: actuellement, l'api récupère le modèle de mlflow. Il doit demander les hash au mlflow et récupérer le modèle dans le dagshub. J'y travaille
-   * **KUBERNETES** : Florent (avec cette livraison)
-
-
-# STEP 3 - PARTIE Api Mlflow Airflow
-### Ubuntu
-VM UBUNTU A UTILISER IMPERATIVEMENT A PARTIR DE Sprint3: AIRFLOW / Airflow avancé - Deux nouveaux opérateurs >
-Faire reinitialiser pour être sûr quelle redémarre de 0
-LA VM a 16GO de RAM et 24GO de disk. Très important car les services consomment beaucoup de RAM
-
-#### Récupérer à partir d'une machine vierge
-git clone -b nico_ApiMlflowAirflow https://github.com/sage-flfay/Template_MLOps_accidents.git
-
-### Makefile
-Taper **`make`** : Affichage de toutes les commandes avec un bref commentaire.
-
-### COMMANDE A LANCER:
-1. **`make install`** : Mettre à jour l’env complet. Elle s'arrete car elle demande à renseigner
-   * **Warning** : il demandera les keys de sécurité dagshub. Et donc il ressort
-   * A partir de l'affichage, copier/coller export DAGSHUB_ACCESS_KEY_ID=XXX (Dans le DagsHub, Data, à la fin S3 Crédential copierl la clé XXX)
-   * Idem pour export DAGSHUB_SECRET_ACCESS_KEY=YYY (NB: YYY=XXX)
-
-2. **`make install`** : maitenant, toute l'installation va se faire
-3. **`make docker-FullClean-full-build`**
-   * **Suppression des projets** : nettoyage total de tout (donc si plusieurs projets en //, tout est supprimé (pas notre cas))
-   * **Demande Airflow usr/pwd** : par défaut, press enter vide donne admin/admin
-   * **Demande du mode** : mode débug (HTTP) ou mode prod (HTTPS)
-   * **Création des images** : création  de toutes les images nécessaires au projet
-   * **Affichage** : affichage des images générées, des infos ubuntu usage (important pour savoir si assez de resources)
-
-4. **`make docker-full-start-WoInitialTrain`**
-   * **Démarrage de tous les services**
-   * **Affichage** : rappel du mode pour accéder aux différents service web, affichage des services et des infos ubuntu usage
-
-5. **`make docker-reset-for-full-simu`** : Forcer la regénération de tous models via le run du web airflow (inutile la première fois car vierge)
-
-6. **`make docker-status`** : affiche l'état des services et les ports actifs
-
-7. **`make ubuntu_usage`** : vérification de la VM pour RAM, DISK, CPU par service
-
-8. **`INFOS GENERALES`**
-   * **CRONTAB** : le dag est lancé automatiquement toutes les 2mn
-   * **Modifier la valeur de la key** :
-     * Faire un refresh site pour voir si le dag est en cours. Une fois terminé, désactiver le dag
-     * Dans le web airflow, aller dans Admin/Variable. Updater l'année: 2019, 2020, 2021, 2022, 2023, 2024 autorisés
-   * **Réactiver le dag** : faire des refresh régulier pour voir lorsque le dag est lancé (tous les nombres pairs de minutes)
-   * **Temps de génération** : si le modèle n'existe pas, la génération prend environ 1.30 à 2mn. Si déjà existant, alors moins d'une minute pour juste les verifs
-
-9. **`INFOS LOGICIELLES`**
-   * **Droit USER au lieu de ROOT** : le docker utilise les droits user et permissions 775 et non pas root
-     * NB: pour le mode group, malgré le paramétrage, il reste en mode root mais cela n'est pas gênant
-     * Pourquoi: eviter une faille de sécurité sinon si le hacker pirate, il a tous les droits root sur la machine.
-   * **Ajout d'un service éphémère pour les droits** : dans docker-compose, ajout en première position (obligatoire) du service fix-volumes-permissions
-     * Lorsque le docker compose crée les volumes, il le fait avec les droits roots. Ce service permet de leur attribuer les droits user et permission 755
-   * **Version docker compose et buildx** :
-     * le travail a été fait sur ubuntu de graphana/prometheus avec 4GO de RAM et 29GO de disk. Utilisation du SWAP à 12GO pour tenir
-     * Le ubuntu Airflow possède 16GO de RAM et 23GO de disk.
-       * Lors du passage à cet ubuntu, le docker compose et buildx utilisent une version plus anciennne et problème de compatibilité
-       * Donc dans le Makefile, lors du make install, update des versions docker compose et buildx identiques à celles du ubuntu graphana
-   * **Détection automatique du best model** :
-     * La détection automatique du best_model est basée sur la meilleur valeur du KPI Recall Grave
-
-
-# STEP 2
-
-### Ubuntu
-Machine ubuntu ouverte dans Sprint4: Monitoring et Agent / Prometheus et Grafana MLOps (FR) / Examen Final : Monitoring des Dérives du Modèle de "Bike Sharing"
-Faire reinitialiser pour être sûr quelle redémarre de 0
-Je mentionne la machine car j'ai l'impression que selon les formations, la pre-configuration est différente
-
-### Prérequis
-Penser à bien updater `requirements.txt` avec les nouvelles librairies pour, au cas où, pouvoir régénérer si nécessaire `pyproject.toml` et `uv.lock`.
-
-#### Récupérer à partir d'une machine vierge
-git clone -b nicola https://github.com/sage-flfay/Template_MLOps_accidents.git
-
-### Preparation
-POUR LA PREMIERE FOIS OU POUR REPARTIR FROM SCRATCH:
-* S'assurer que le fichier .AccidentsSetupDVC_AlreadyDone n'existe pas.
-* Ainsi les répertoire .dvc, data et models sont supprimés s'ils existent
-  * rm -f .AccidentsSetupDVC_AlreadyDone
-
-REPARTIR DE ZERO MAIS SANS REINITIALISER LE DVC
-* S'assurer que les répertoires data, models n'existent pas et que le contenu de .dvc/cache est vide
-* Si les dockers créent les répertoires/fichiers, c'est fait en tant que user root
-* Donc utilisation de sudo pour être en utilisateur root
-  * sudo rm -rf data/ models/ .dvc/cache/*
-
-### Makefile
-Taper **`make`** : Affichage de toutes les commandes avec un bref commentaire.
-* Les parties `docker-..`, `install` et `quality` sont revérifiés et fonctionnels.
-* Les autres ont été validés lors du step 1.
-
-**Pour lancer à partir d’une machine vierge ubuntu :**
-1. **`make install`** : Mettre à jour l’env complet.
-   > **Warning** : il demandera les keys de sécurité dagshub.
-2. **`make docker-clean-build`** : Détruit les images, les volumes les fichiers avant de reconstruire.
-   * **prod**  : mode sécurisé **HTTPS/443**.
-   * **debug** : mode normal **HTTP/80**.
-3. **`make docker-start`** : Lancement des services.
-4. **`make docker-train`** : Relancer l’entraînement, pour l'instant exactement sur les mêmes données.
-
-**Pour lancer à partir d'une machine ubuntu contenant déjà le projet**
-* **La bonne pratique, faire systématiquement `make install`**
-   > **Warning** : si ce n'est pas déjà fait, il demandera les keys de sécurité dagshub.
-
-### make install
-* Dès qu'on arrive sur une machine, de façon systématique, faire
-  * make install
-
-### make pipeline
-* Initialiser
-  * sudo rm -rf data/ models/ .dvc/cache/*
-* Lancer la commande
-  * make pipeline
-
-### make quality
-* Vérifier que le code respecte bien le PEP8 (black et flake8). Peut être fait à tout moment
-  * make quality
+```bash
+make          # Affiche toutes les commandes disponibles avec leur description
+```
 
 ---
 
-## CONCLUSION
-* **STEP 2** : Logiquement terminé. L'infrastructure est stable, sécurisée et optimisée sous Python 3.12.
-* **STEP 3 (À venir)** : 
-  * **Comme défà décidé, la partie que je dois faire**
-  * [ ] **Orchestration AIRFLOW** : Mise en place du pilotage des tâches.
-  * [ ] **Simulation de données** : Gérer l'arrivée de nouveaux jeux de données.
-  * [ ] **Évolution du `docker-train`** : Adapter le script pour intégrer ces nouvelles données dynamiquement.
+## Démarrage complet (machine vierge)
 
-### Optimisation et Sécurisation de l'API
-* **Ce que je comprends: corrélation entre ce qui est demandé et ce qui est déjà fait**
-* **Sécurité** : HTTPS/443 effectif pour l'API et MLFLOW via Nginx.
-* **Point d'entrée unique** : Nginx centralise tout le trafic.
-* **Rate Limiting** : Ajouté pour prévenir les surcharges et le hacking (configuration standard, optimisable selon les besoins).
+### 1. Configurer les credentials DagsHub
 
-### Scalabilité (Docker / Kubernetes)
-* **Ce que je comprends: corrélation entre ce qui est demandé et ce qui est déjà fait**
-* **Docker** : 
-  * Le `docker-compose` inclut déjà la directive `replicas` pour le service API.
-  * Il suffit d'augmenter le nombre de replicas pour scaler horizontalement.
-  * **Load Balancing** : Géré automatiquement par Nginx.
-* **Kubernetes** : Implémentation à faire dans la mesure du possible pour la phase finale.
+```bash
+make install
+```
+
+La commande s'interrompt pour demander les clés S3 DagsHub. Suivez les instructions affichées. Les clés se trouvent dans DagsHub → **Data → S3 Credentials**.
+
+> Les saisies sont masquées (comme pour un `git push`).
+
+### 2. Finaliser l'installation
+
+```bash
+make install
+```
+
+Relancer après avoir renseigné les clés : l'installation complète s'exécute.
+
+### 3. Construire les images Docker
+
+```bash
+make docker-FullClean-full-build
+```
+
+Cette commande :
+- Supprime tous les conteneurs et volumes existants
+- Demande les identifiants Airflow (entrée vide → `admin` / `admin` par défaut)
+- Demande le mode de déploiement : **debug** (HTTP) ou **prod** (HTTPS)
+- Construit toutes les images nécessaires
+- Affiche un récapitulatif des images créées et l'utilisation des ressources de la VM
+
+### 4. Démarrer les services
+
+```bash
+make docker-full-start-WoInitialTrain_fast
+```
+
+Démarre tous les services de façon optimisée. Inclut automatiquement un reset complet pour une simulation cohérente.  
+Affiche les URLs d'accès aux interfaces web et l'état des ressources.
 
 ---
 
-## REMARQUES GLOBALES
+## Commandes courantes
 
-### Passage en Python 3.12
-* À la racine, modification du fichier `.python-version` en remplaçant 3.8 par 3.12.
-* Regénération de `pyproject.toml` et `uv.lock`.
-* **Impact** : les images en 3.8 sont à 970MB ; en 3.12 les images sont à **904MB**.
-* Sources plus récentes et donc avec améliorations.
+| Commande | Description |
+|---|---|
+| `make docker-reset-for-full-simu` | Force la regénération de tous les modèles via Airflow (inutile au premier démarrage) |
+| `make docker-status` | Affiche l'état des services et les ports actifs |
+| `make ubuntu_usage` | Affiche l'utilisation RAM / Disque / CPU par service |
 
-### Commentaires
-* Les fichiers travaillés contiennent beaucoup de commentaires dans le but de bien comprendre les commandes (j’oublie vite). 
-* À la fin, on fera un nettoyage des commentaires.
+---
 
-### Makefile
-* **Auto-documentation** : pour avoir le help de toutes les cibles avec un résumé, taper : `make`.
-* `export PROJECT_NAME=accidents_severity` : c’est le nom du projet au lieu du nom par défaut `template-mlops-accidents`.
-* `PROJECT_NAME` utilisé dans le `docker-compose.yml` (variable `name`). Ainsi dans les images on verra `accidents_severity-xxx`.
-* Centralisation de plusieurs variables initialisées dans ce fichier pour une meilleure vue globale.
+## Configuration
 
-### Dans le docker-compose.yml
-Il y a les 4 services et 1 job (train) :
-* **Postgres** : pour la database et pour préparer l’utilisation du service Airflow.
-* **Nginx** : pour l’entrée unique.
-  * `nginx.conf` (mode prod HTTPS/443) et `nginx_debug.conf` (mode normal HTTP/80).
-  * **WARNING** : Si Kubernetes est installé par défaut, il réserve les ports 80 et 443 et donc source de problème.
-  * Je désactive Kubernetes pour utiliser ces ports (`make docker_check_port_routage`).
-  * 🚨 **ATTENTION AU CONFLIT POUR LA SCALABILITY AVEC KUBERNETES. PENSER A NE PLUS LE DESACTIVER**
-  * **Rate Limiting** configuré.
-  * **Redirection automatique** vers `IP/api/` ou `IP/mlflow/` si on tape IP/api ou IP/mlflow
-  * **Volume certs** : `- ./deployments/nginx/certs:/etc/nginx/certs:ro` (DOIT RESTER EN LOCAL).
-* **mlflow** :
-  * Passage à **MLFLOW 3.x**. En python 3.8 version MLFLOW 2.x utilisée
-  * `main.py` modifié (`return J2Templates.TemplateResponse`).
-  * Dockerfile avec ajout dans le commande de `--allowed-hosts '*'` et `--cors-allowed-origins '*'`.
-  * **WARNING** : à terme, définir ces hôtes précisément (*) pour éviter le hacking.
-* **api** :
-  * Pour la production : supprimer `./src` et vérifier.
-  * **IMPORTANT** : si replicas > 1, **OBLIGATOIRE DE SUPPRIMER** `container_name: prediction_api`.
-* **train (le job)** :
-  * Pour la production : enlever les volumes (`./src`, `./data`, `./models`) et vérifier.
+### Changer l'année de simulation
 
-### Volumes et Relance
-* **Volumes créés** : `postgres-db-volume` et `Mlflow-artifacts-volume`.
-* **Restart** : `always` pour les services, `on-failure` pour le job train.
+Dans l'interface Airflow → **Admin → Variables**, mettre à jour la variable `année`.  
+Valeurs autorisées : `2019`, `2020`, `2021`, `2022`, `2023`, `2024`.
 
-### Reproductibilité
-* **DANS LES DOCKERFILES**
-* Pas d'option `latest`. Versions complètes utilisées dans `FROM`.
-* Commande : `RUN uv sync --frozen --no-cache --no-install-project`.
-* Le **frozen** garantit l'utilisation exacte de `uv.lock`.
+### Temps de génération des modèles
 
-### Sécurité
-* Mode **prod** (HTTPS/443).
-* Volume certs en lecture seule (`:ro`).
-* Identifiants `DAGSHUB` via la méthode **export** (préférée à `.env`).
-* Utilisation de `clear` et `history -c` pour supprimer les traces sur la machine en local
-* **GitHub et DAGSHUB** sécurisés via S3 (Repository secrets) avec `DAGSHUB_ACCESS_KEY_ID` et `DAGSHUB_SECRET_ACCESS_KEY`.
-* Fait dans https://github.com/user/Template_MLOps_accidents/settings/secrets/actions
-* avec les DAGSHUB_ACCESS_KEY_ID et DAGSHUB_SECRET_ACCESS_KEY qui contiennent le code S3 de Dagshub (dans Data)
+- Modèle inexistant : environ **1 min 30 à 2 min**
+- Modèle déjà présent : moins d'**1 min** (vérifications uniquement)
 
+---
 
+## Architecture des services
 
+### Docker Compose
 
-Project Name
-==============================
+| Service | Rôle |
+|---|---|
+| **Postgres** | Base de données (utilisée aussi par Airflow) |
+| **Nginx** | Point d'entrée unique, reverse proxy, rate limiting, redirection HTTP→HTTPS |
+| **MLflow** | Tracking des expériences et gestion des modèles |
+| **API** | Service de prédiction |
+| **train** *(job)* | Entraînement du modèle (éphémère, `on-failure` restart) |
 
-This project is a starting Pack for MLOps projects based on the subject "road accident". It's not perfect so feel free to make some modifications on it.
+### Monitoring
 
-Project Organization
-------------
+- **Prometheus** : collecte des métriques applicatives, VM (`node-exporter`) et conteneurs (`cAdvisor`)
+- **Grafana** : dashboards de monitoring pour la VM et les conteneurs
 
-    ├── LICENSE
-    ├── README.md          <- The top-level README for developers using this project.
-    ├── data
-    │   ├── external       <- Data from third party sources.
-    │   ├── interim        <- Intermediate data that has been transformed.
-    │   ├── processed      <- The final, canonical data sets for modeling.
-    │   └── raw            <- The original, immutable data dump.
-    │
-    ├── logs               <- Logs from training and predicting
-    │
-    ├── models             <- Trained and serialized models, model predictions, or model summaries
-    │
-    ├── notebooks          <- Jupyter notebooks. Naming convention is a number (for ordering),
-    │                         the creator's initials, and a short `-` delimited description, e.g.
-    │                         `1.0-jqp-initial-data-exploration`.
-    │
-    ├── references         <- Data dictionaries, manuals, and all other explanatory materials.
-    │
-    ├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
-    │   └── figures        <- Generated graphics and figures to be used in reporting
-    │
-    ├── requirements.txt   <- The requirements file for reproducing the analysis environment, e.g.
-    │                         generated with `pip freeze > requirements.txt`
-    │
-    ├── src                <- Source code for use in this project.
-    │   ├── __init__.py    <- Makes src a Python module
-    │   │
-    │   ├── data           <- Scripts to download or generate data
-    │   │   ├── check_structure.py    
-    │   │   ├── import_raw_data.py 
-    │   │   └── make_dataset.py
-    │   │
-    │   ├── features       <- Scripts to turn raw data into features for modeling
-    │   │   └── build_features.py
-    │   │
-    │   ├── models         <- Scripts to train models and then use trained models to make
-    │   │   │                 predictions
-    │   │   ├── predict_model.py
-    │   │   └── train_model.py
-    │   │
-    │   ├── visualization  <- Scripts to create exploratory and results oriented visualizations
-    │   │   └── visualize.py
-    │   └── config         <- Describe the parameters used in train_model.py and predict_model.py
+---
 
----------
+## Sécurité
 
-## Steps to follow 
+- **HTTPS/443** activé en mode prod via Nginx
+- **Rate limiting** configuré dans Nginx
+- **Droits utilisateur** (non root) dans les conteneurs Docker, permissions `755`
+- **Credentials DagsHub** transmis via `export` (non stockés dans `.env`)
+- **Secrets GitHub Actions** configurés via `DAGSHUB_ACCESS_KEY_ID` et `DAGSHUB_SECRET_ACCESS_KEY`
+- Certificats montés en lecture seule (`:ro`)
 
-Convention : All python scripts must be run from the root specifying the relative file path.
+---
 
-### 1- Create a virtual environment using Virtualenv.
+## Reproductibilité
 
-    `python -m venv my_env`
+- Versions d'images Docker fixées (pas de `latest`)
+- Dépendances verrouillées via `uv.lock` (`uv sync --frozen`)
+- Sélection automatique du meilleur modèle basée sur le KPI **Recall Grave**
 
-###   Activate it 
+---
 
-    `./my_env/Scripts/activate`
+## Scalabilité
 
-###   Install the packages from requirements.txt
+- Le `docker-compose.yml` inclut la directive `replicas` sur le service API.
+- Le load balancing est géré automatiquement par Nginx.
+- Pour scaler : augmenter `replicas` et supprimer `container_name: prediction_api`.
 
-    `pip install -r .\requirements.txt` ### You will have an error in "setup.py" but this won't interfere with the rest
+> Si Kubernetes est installé, il peut réserver les ports 80 et 443. Vérifier avec `make docker_check_port_routage`.
 
-### 2- Execute import_raw_data.py to import the 4 datasets.
+---
 
-    `python .\src\data\import_raw_data.py` ### It will ask you to create a new folder, accept it.
+## Travaux en cours
 
-### 3- Execute make_dataset.py initializing `./data/raw` as input file path and `./data/preprocessed` as output file path.
-
-    `python .\src\data\make_dataset.py`
-
-### 4- Execute train_model.py to instanciate the model in joblib format
-
-    `python .\src\models\train_model.py`
-
-### 5- Finally, execute predict_model.py with respect to one of these rules :
-  
-  - Provide a json file as follow : 
-
-    
-    `python ./src/models/predict_model.py ./src/models/test_features.json`
-
-  test_features.json is an example that you can try 
-
-  - If you do not specify a json file, you will be asked to enter manually each feature. 
-
-
-------------------------
-
-<p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience</small></p>
+- [ ] Échange du modèle MLflow via HTTP (actuellement via volume partagé)
+- [ ] Déploiement **Kubernetes**
