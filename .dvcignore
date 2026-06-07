@@ -1,0 +1,14 @@
+# Add patterns of files dvc should ignore, which could improve
+# the performance. Learn more at
+# https://dvc.org/doc/user-guide/dvcignore
+
+# Certificats et clés privées
+deployments/nginx/certs/
+.AccidentsSetupDVC_AlreadyDone
+
+# Automatiquement regnéré à partir de /.dvc/confg
+# NB: config.local préféré à /.dvc/config.local car fonctionne même si la config change
+config.local
+
+# Inutile dans le dvc
+simu_data_web

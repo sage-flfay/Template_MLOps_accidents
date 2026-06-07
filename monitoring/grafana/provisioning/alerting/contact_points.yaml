@@ -1,0 +1,12 @@
+apiVersion: 1
+contactPoints:
+    - orgId: 1
+      name: webhook_alert_notification
+      receivers:
+        - uid: ffnwjsnkjy1ohc
+          type: webhook
+          settings:
+            #url: https://webhook.site/d75e52fa-481a-4235-a367-6aeccea13134
+            # GF_WEBHOOK_URL est updaté dans la partie environnement du service grafana de docker-compose.yaml
+            url: ${GF_WEBHOOK_URL}
+          disableResolveMessage: false

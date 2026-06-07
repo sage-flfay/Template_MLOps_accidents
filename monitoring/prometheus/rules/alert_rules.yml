@@ -1,0 +1,18 @@
+groups:
+  - name: ml_model_alerts
+    rules:
+      - alert: ModelDriftDetected
+        # La condition : si le drift_status est supérieur à 0 (logiquement 0 ou 1)
+        expr: accident_model_drift_status > 0
+        # Prometheus et Grafana avec les mêmes valeur du for pour être cohérent
+        for: 0s
+        labels:
+          severity: warning
+        # $value est la valeur de expr. Avec l'astuce du produit, on a l'alerte et le score
+        # Pour $labels.model_name, les 2 KPIs DOIVENT avoir le même mode_name sinon problèmes
+        # Comme ils viennent du même modèle ce n'est pas un problème
+        annotations:
+          summary: "Dérive du modèle {{ $labels.model_name }} détectée"
+          description: >
+            Le modèle {{ $labels.model_name }} est en dérive (Status: {{ $value }}).
+            Score associé : {{ query "accident_model_drift_score{model_name='$labels.model_name'}" | printf "%.2f" }}.

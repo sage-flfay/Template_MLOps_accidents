@@ -1,0 +1,24 @@
+# Configuration et connexion automatiques de Grafana
+# à la source de données de métriques Prometheus
+# (évite une connexion manuelle fastidieuse)
+
+# Version de l'API de config interne à Grafana (déjà intégrée au logiciel)
+apiVersion: 1
+
+# Liste des sources de données à connecter automatiquement au démarrage
+datasources:
+  # Nom de la source de données tel qu'il apparaîtra dans l'interface Grafana
+  # Un seul - = 1 seule source de données. On décide de l'appeler
+  # Prometheus en cohérene avec la source qui est Prometheus
+  - name: Prometheus
+    # Type de language que Grafana doit parler (prometheus pour langage PromQL)
+    type: prometheus
+    # Mode d'accès : le serveur Grafana sert de passerelle (proxy)
+    # pour interroger Prometheus et récupérer les données en arrière-plan
+    access: proxy
+    # URL interne au réseau Docker (avec le préfixe de route)
+    url: http://prometheus:9090/prometheus
+    # Par défaut, les nouveaux graphiques créés utilisent les données Prometheus
+    isDefault: true
+    # On peut modifier cette configuration via l'interface web de Grafana
+    editable: true
